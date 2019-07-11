@@ -6,7 +6,7 @@ Dashboard for travel times for internal management. This dashboard displays aver
 
 The layout of the code is inspired by the Model-View-Controller paradigm, specifically from [this Dash tutorial](https://dev.to/alysivji/interactive-web-based-dashboards-in-python-5hf). In addition, parameters and constants that someone would want to change when forking this are frontloaded in ALL_CAPS variables, in order to make modification easier. The names of DIVs used in callbacks are also stored in variables in order to reduce the risk of bugs since variable names are linted to see if they exist.
 
-In addition to some of the plot styling being in these variables, [two css stylesheets](https://github.com/CityofToronto/bdit_king_pilot_dashboard/tree/gh-pages/css) are loaded from the `gh-pages` branch to style the table and buttons. For... reasons, these can't be loaded from local files ¯\\_(ツ)_/¯.
+In addition to some of the plot styling being in these variables, [two css stylesheets](https://github.com/CityofToronto/bdit_king_pilot_dashboard/tree/gh-pages/css) are loaded from the `gh-pages` branch to style the table and buttons. For... reasons, these can't be loaded from local files ¯\_(ツ)_/¯.
 
 ### Other thing to note
 
@@ -18,7 +18,7 @@ Dash detects the number of clicks any html element has received. By storing all 
 
 When a row is clicked:
 
-1. the `row_click` function compares the current number of clicks for each row with the previous state and then labels the row for which this changed as "clicked".
+1. the `row_click` function compares the current number of clicks for each row with the previous state and then labels the row for which this changed as "clicked". 
 2. the `row_click` function updates the `STATE_DIV_ID` with the number of clicks and the row which is clicked.
 3. this triggers updating the `SELECTED_STREET_DIV`
 4. which triggers updating the selected rows classes to add or remove the "selected" class.
@@ -46,6 +46,15 @@ def create_row_click_function(streetname):
 
 ### Data
 
+Data from downtown Bluetooth detectors arrives in our database after initial filtering by bliptrack.
+
+There it is grouped into five-minute-bins using the median to reduce the impact of extreme outliers.
+
+The five-minute bins are grouped again into 30-minute bins using weighted average by the number of observations per five-minute-bin and separated by working day and nonworking day.
+
+The 30-minute data collected before the pilot was plotted as scatterplots and quality checked. Major outliers were noted and removed from the baseline if deemed necessary.
+
+The 30-minute data was then aggregated by time period, and pre-pilot data were averaged to get a baseline for a given period during the weekend or week.
 This visualization depends on two tables, which are views in the data warehouse:
 
  - Baseline travel times for each (street, direction, day type, timeperiod)  ([source](https://github.com/CityofToronto/bdit_king_pilot_dashboard/blob/data_pipeline/bluetooth/sql/create-view-dash_baseline.sql))
@@ -84,4 +93,4 @@ The first line forces the heroku app to restart, thus killing all connections to
 
 ## Contribution
 
-This branch, now that it is in production, is **protected**. Develop instead on a different branch and when an issue is complete, submit a pull request for staff to review.
+This branch, now that it is in production, is **protected**. Develop instead on a branch and, when an issue is complete, submit a pull request for staff to review.
