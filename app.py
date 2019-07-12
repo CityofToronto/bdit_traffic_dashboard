@@ -11,12 +11,11 @@ import pandas as pd
 import pandas.io.sql as pandasql
 from numpy import nan
 import plotly.graph_objs as go
-from dash.dependencies import Event, Input, Output, State
+from dash.dependencies import Input, Output, State
 from dateutil.relativedelta import relativedelta
 from flask import send_from_directory
 from psycopg2 import connect
 
-from dash_responsive import DashResponsive
 
 ###################################################################################################
 #                                                                                                 #
@@ -120,11 +119,17 @@ INITIAL_STATE = {orientation:OrderedDict([(street,
 #                                   App Configuration                                             #
 #                                                                                                 #
 ###################################################################################################
+metas = [{'name':"viewport",
+         'content':"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"}]
 
-app = DashResponsive()
+app = dash.Dash(__name__, meta_tags=metas)
 app.config['suppress_callback_exceptions'] = True
 app.title=TITLE
 server = app.server
+
+app.config.update({
+        'requests_pathname_prefix': '/dvp-dashboard/',
+})
 
 server.secret_key = os.environ.get('SECRET_KEY', 'my-secret-key')
 
@@ -346,8 +351,8 @@ def generate_row(df_row, baseline_row, row_state, orientation='ew'):
             after_val = nan 
         data_cells.extend(generate_direction_cells(baseline_val, after_val))
 
-    return html.Tr([html.Td(df_row['street'], className='segname'),
-                    *data_cells],
+    return html.Tr([html.Td(df_row['street'], className='segname'), 
+                   *data_cells],
                    id=df_row['street'],
                    className=generate_row_class(row_state['clicked']),
                    n_clicks=row_state['n_clicks'])
@@ -532,14 +537,14 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
     html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1]), className='eight columns')
                ], id=LAYOUTS['streets'])
 
-app.layout = html.Div([html.Link(rel='stylesheet',
-                                 href='/css/dashboard.css'),
-                       html.Link(rel='stylesheet',
-                                 href='/css/style.css'),
+app.layout = html.Div([#html.Link(rel='stylesheet',
+                        #         href='/css/dashboard.css'),
+                       #html.Link(rel='stylesheet',
+                       #          href='/css/style.css'),
                        html.Div(children=[html.H1(children=TITLE, id='title')],
                                 className='row twelve columns'),
-                       dcc.Tabs(tabs=[{'label': 'East-West Streets', 'value': 'ew'},
-                                      {'label': 'North-South Streets', 'value': 'ns'}],
+                       dcc.Tabs(children=[dcc.Tab(label='East-West Streets', value='ew'),
+                                      dcc.Tab(label='North-South Streets', value='ns')],
                                 value='ew',
                                 id='tabs',
                                 style={'font-weight':'bold'}),
@@ -561,19 +566,6 @@ app.layout = html.Div([html.Link(rel='stylesheet',
                       ])
 
 
-
-################################CSS###########################################
-
-app.css.config.serve_locally= True
-
-@app.server.route('/css/<path:path>')
-def static_file(path):
-    '''
-    Function inspired by https://community.plot.ly/t/serve-locally-option-with-additional-scripts-and-style-sheets/6974/6
-    '''
-    static_folder = os.path.join(os.getcwd(), 'css')
-    return send_from_directory(static_folder, path)
-
 ###################################################################################################
 #                                                                                                 #
 #                                         Controllers                                             #
@@ -592,18 +584,20 @@ def display_streets(value):
         return {'display':'none'}
 
 @app.callback(Output(CONTROLS['div_id'], 'style'),
-              state=[State(CONTROLS['toggle'], 'children')],
-              events=[Event(CONTROLS['toggle'], 'click')])
-def hide_reveal_filters(current_toggle):
+              [Input(CONTROLS['toggle'], 'n_clicks')],
+              state=[State(CONTROLS['toggle'], 'children')]
+              )
+def hide_reveal_filters(n_clicks, current_toggle):
     if current_toggle == 'Show Filters':
         return {'display':'inline'}
     else:
         return {'display':'none'}
 
 @app.callback(Output(CONTROLS['toggle'], 'children'),
-              state=[State(CONTROLS['toggle'], 'children')],
-              events=[Event(CONTROLS['toggle'], 'click')])
-def change_button_text(current_toggle):
+            [Input(CONTROLS['toggle'], 'n_clicks')],
+            state=[State(CONTROLS['toggle'], 'children')]
+            )
+def change_button_text(n_clicks, current_toggle):
     if current_toggle=='Hide Filters':
         return 'Show Filters'
     else:
