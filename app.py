@@ -77,7 +77,7 @@ MAX_TIME = dict(ew=min(30, DATA[DATA['direction'].isin(DIRECTIONS['ew'])].tt.max
                 ns=min(20, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
 
 # Plot appearance
-TITLE = 'King Street Transit Pilot: Vehicular Travel Time Monitoring'
+TITLE = 'Don Valley Parkway Closures: Vehicular Travel Time Monitoring'
 BASELINE_LINE = {'color': 'rgba(128, 128, 128, 0.7)',
                  'width': 4}
 PLOT = dict(margin={'t':10, 'b': 40, 'r': 40, 'l': 40, 'pad': 8})
@@ -551,7 +551,7 @@ app.layout = html.Div([#html.Link(rel='stylesheet',
                        html.Div(id=MAIN_DIV, className='row', children=[STREETS_LAYOUT]),
                        html.Div(children=html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
-                                                         href="https://www1.toronto.ca/wps/portal/contentonly?vgnextoid=f98b551ed95ff410VgnVCM10000071d60f89RCRD")],
+                                                         href="https://www.toronto.ca/services-payments/streets-parking-transportation/road-safety/big-data-innovation-team/")],
                                                          style={'text-align':'right',
                                                                 'padding-right':'1em'}),
                                 className='row'),
