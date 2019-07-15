@@ -6,11 +6,7 @@ Dashboard for travel times for internal management. This dashboard displays aver
 
 The layout of the code is inspired by the Model-View-Controller paradigm, specifically from [this Dash tutorial](https://dev.to/alysivji/interactive-web-based-dashboards-in-python-5hf). In addition, parameters and constants that someone would want to change when forking this are frontloaded in ALL_CAPS variables, in order to make modification easier. The names of DIVs used in callbacks are also stored in variables in order to reduce the risk of bugs since variable names are linted to see if they exist.
 
-In addition to some of the plot styling being in these variables, [two css stylesheets](https://github.com/CityofToronto/bdit_king_pilot_dashboard/tree/gh-pages/css) are loaded from the `gh-pages` branch to style the table and buttons. For... reasons, these can't be loaded from local files ¯\_(ツ)_/¯.
-
-### Other thing to note
-
-In order to add the "viewport" html `meta` tag to the `<head>` of the page, `dash.Dash` had to subclassed and its `index()` method overwritten, this class is stored in `dash_responsive.py`. 
+In addition to some of the plot styling being in these variables, [two css stylesheets](https://github.com/CityofToronto/bdit_traffic_dashboard/tree/master/assets) are loaded from local files.
 
 #### Detecting row clicks
 
