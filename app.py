@@ -84,7 +84,7 @@ PLOT = dict(margin={'t':10, 'b': 40, 'r': 40, 'l': 40, 'pad': 8})
 PLOT_COLORS = dict(pilot='rgba(22, 87, 136, 100)',
                    baseline='rgba(128, 128, 128, 1.0)',
                    selected='rgba(135, 71, 22, 1.0)')
-FONT_FAMILY = '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif'
+FONT_FAMILY = '"Libre Franklin", sans-serif'
 
 # IDs for divs
 STATE_DIV_IDS = OrderedDict([(orientation, 'clicks-storage' + orientation) for orientation in STREETS])
@@ -537,10 +537,7 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
     html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1]), className='eight columns')
                ], id=LAYOUTS['streets'])
 
-app.layout = html.Div([#html.Link(rel='stylesheet',
-                        #         href='/css/dashboard.css'),
-                       #html.Link(rel='stylesheet',
-                       #          href='/css/style.css'),
+app.layout = html.Div([
                        html.Div(children=[html.H1(children=TITLE, id='title')],
                                 className='row twelve columns'),
                        dcc.Tabs(children=[dcc.Tab(label='East-West Streets', value='ew'),
