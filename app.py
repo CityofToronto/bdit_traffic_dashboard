@@ -33,6 +33,7 @@ else:
     dbset = CONFIG['DBSETTINGS']
     con = connect(**dbset)
 
+"""
 DATA = pandasql.read_sql('''
                          SELECT street, direction, dt AS date, day_type, category, period, round(tt,1) tt, 
                          CASE WHEN dt = first_value(dt) OVER (PARTITION BY direction, day_type, period ORDER BY dt DESC)
@@ -42,6 +43,7 @@ DATA = pandasql.read_sql('''
                          LEFT OUTER JOIN king_pilot.pilot_weeks weeks ON dt >= week AND dt < week + INTERVAL '1 week'
                          LEFT OUTER JOIN king_pilot.pilot_months months ON dt >= month AND dt < month + INTERVAL '1 month'
                          ''', con)
+
 BASELINE = pandasql.read_sql('''SELECT street, direction, from_intersection, to_intersection, 
                              day_type, period, period_range, round(tt,1) tt 
                              FROM king_pilot.dash_baseline ''',
@@ -54,6 +56,57 @@ WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week
 WEEKS.sort_values(by='week_number', inplace=True)
 MONTHS['label'] = 'Month ' + MONTHS['month_number'].astype(str) + ': ' + MONTHS['month'].dt.strftime("%b '%y")
 RANGES = [pd.DataFrame(), pd.DataFrame(), WEEKS, MONTHS]
+
+"""
+
+DATA = pandasql.read_sql('''
+                         SELECT 
+                            (CASE WHEN (start_crossstreet = 'Bayview Ramp' OR start_crossstreet = 'Don Mills') AND (end_crossstreet = 'Bayview Ramp' OR end_crossstreet = 'Don Mills')
+                            THEN 'DVP between Bayview Ramp and Don Mills'
+                            WHEN (start_crossstreet = 'Bayview Ramp' OR start_crossstreet = 'Dundas') AND (end_crossstreet = 'Bayview Ramp' OR end_crossstreet = 'Dundas')
+                            THEN 'DVP between Bayview Ramp and Dundas'
+                            WHEN (start_crossstreet = 'Wynford' OR start_crossstreet = 'Don Mills') AND (end_crossstreet = 'Wynford' OR end_crossstreet = 'Don Mills')
+                            THEN 'DVP between Don Mills and Wynford'
+                            WHEN (start_crossstreet = 'Wynford' OR start_crossstreet = 'Lawrence') AND (end_crossstreet = 'Wynford' OR end_crossstreet = 'Lawrence')
+                            THEN 'DVP between Lawrence and Wynford'
+                            WHEN (start_crossstreet = 'York Mills' OR start_crossstreet = 'Lawrence') AND (end_crossstreet = 'York Mills' OR end_crossstreet = 'Lawrence')
+                            THEN 'DVP between Lawrence and York Mills'
+                            END) As street, 
+                         direction, dt AS date, day_type, study_period AS category, period, round(tt/60,1) tt, 
+                         CASE WHEN dt = first_value(dt) OVER (PARTITION BY direction, day_type, period ORDER BY dt DESC)
+                         THEN 1 ELSE 0 END AS most_recent,
+                         study_period, week_number, month_number, start_crossstreet, end_crossstreet
+                         FROM data_analysis.dvp_blip_daily 
+                         LEFT OUTER JOIN data_analysis.dvp_weeks weeks ON dt >= week AND dt < week + INTERVAL '1 week'
+                         LEFT OUTER JOIN data_analysis.dvp_months months ON dt >= month AND dt < month + INTERVAL '1 month'
+                         WHERE study_period = 'DVP Lane Restrictions'
+                         ''', con)
+
+BASELINE = pandasql.read_sql('''SELECT (CASE WHEN (start_crossstreet = 'Bayview Ramp' OR start_crossstreet = 'Don Mills') AND (end_crossstreet = 'Bayview Ramp' OR end_crossstreet = 'Don Mills')
+                            THEN 'DVP between Bayview Ramp and Don Mills'
+                            WHEN (start_crossstreet = 'Bayview Ramp' OR start_crossstreet = 'Dundas') AND (end_crossstreet = 'Bayview Ramp' OR end_crossstreet = 'Dundas')
+                            THEN 'DVP between Bayview Ramp and Dundas'
+                            WHEN (start_crossstreet = 'Wynford' OR start_crossstreet = 'Don Mills') AND (end_crossstreet = 'Wynford' OR end_crossstreet = 'Don Mills')
+                            THEN 'DVP between Don Mills and Wynford'
+                            WHEN (start_crossstreet = 'Wynford' OR start_crossstreet = 'Lawrence') AND (end_crossstreet = 'Wynford' OR end_crossstreet = 'Lawrence')
+                            THEN 'DVP between Lawrence and Wynford'
+                            WHEN (start_crossstreet = 'York Mills' OR start_crossstreet = 'Lawrence') AND (end_crossstreet = 'York Mills' OR end_crossstreet = 'Lawrence')
+                            THEN 'DVP between Lawrence and York Mills'
+                            END) As street, direction, start_crossstreet from_intersection, end_crossstreet to_intersection, 
+                             day_type, period, time_range period_range, round(tt,1) tt 
+                             FROM data_analysis.dvp_blip_baseline ''',
+                             con)
+
+WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.dvp_weeks 
+                         ''', con)
+MONTHS = pandasql.read_sql('''SELECT * FROM data_analysis.dvp_months
+                         ''', con, parse_dates=['month'])
+WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week'].astype(str)
+WEEKS.sort_values(by='week_number', inplace=True)
+MONTHS['label'] = 'Month ' + MONTHS['month_number'].astype(str) + ': ' + MONTHS['month'].dt.strftime("%b '%y")
+RANGES = [pd.DataFrame(), pd.DataFrame(), WEEKS, MONTHS]
+CATEGORY_NAME_PILOT = 'DVP Lane Restrictions'
+
 con.close()
 
 ###################################################################################################
@@ -64,27 +117,25 @@ con.close()
 
 # Data management constants
 
-STREETS = OrderedDict(ew=['Dundas', 'Queen', 'Richmond', 'Adelaide', 'Wellington', 'Front'],
-                      ns=['Bathurst', 'Spadina', 'University', 'Yonge', 'Jarvis'])
-DIRECTIONS = OrderedDict(ew=['Eastbound', 'Westbound'],
-                         ns=['Northbound', 'Southbound'])
+STREETS = OrderedDict(ns=['DVP between Bayview Ramp and Don Mills', 'DVP between Bayview Ramp and Dundas', 'DVP between Don Mills and Wynford', 
+                    'DVP between Lawrence and Wynford', 'DVP between Lawrence and York Mills'])
+DIRECTIONS = OrderedDict(ns=['NB', 'SB'])
 DATERANGE = [DATA['date'].min(), DATA['date'].max()]
 TIMEPERIODS = BASELINE[['day_type','period', 'period_range']].drop_duplicates().sort_values(['day_type', 'period_range'])
 THRESHOLD = 1
 
 #Max travel time to fix y axis of graphs, based on the lowest of the max tt in the data or 20/30 for either graph
-MAX_TIME = dict(ew=min(30, DATA[DATA['direction'].isin(DIRECTIONS['ew'])].tt.max()),
-                ns=min(20, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
+MAX_TIME = dict(ns=min(20, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
 
 # Plot appearance
-TITLE = 'King Street Transit Pilot: Vehicular Travel Time Monitoring'
+TITLE = 'Don Valley Parkway Lane Closures: Vehicular Travel Time Monitoring'
 BASELINE_LINE = {'color': 'rgba(128, 128, 128, 0.7)',
                  'width': 4}
 PLOT = dict(margin={'t':10, 'b': 40, 'r': 40, 'l': 40, 'pad': 8})
 PLOT_COLORS = dict(pilot='rgba(22, 87, 136, 100)',
                    baseline='rgba(128, 128, 128, 1.0)',
                    selected='rgba(135, 71, 22, 1.0)')
-FONT_FAMILY = '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif'
+FONT_FAMILY = '"Libre Franklin", sans-serif'
 
 # IDs for divs
 STATE_DIV_IDS = OrderedDict([(orientation, 'clicks-storage' + orientation) for orientation in STREETS])
@@ -103,8 +154,8 @@ CONTROLS = dict(div_id='controls-div',
                 date_picker='date-picker-div',
                 date_picker_span='date-picker-span')
 DATERANGE_TYPES = ['Last Day', 'Select Date', 'Select Week', 'Select Month']
-GRAPHS = ['eb_graph', 'wb_graph']
-GRAPHDIVS = ['eb_graph_div', 'wb_graph_div']
+GRAPHS = ['dvp_graph', 'alternate_graph']
+GRAPHDIVS = ['dvp_div', 'alternate_graph_div']
 
 LAYOUTS = dict(streets='streets-div')
 
@@ -155,7 +206,7 @@ def serialise_state(clicks_dict):
     '''
     return json.dumps(clicks_dict)
 
-def pivot_order(df, orientation = 'ew', date_range_type=1):
+def pivot_order(df, orientation = 'ns', date_range_type=1):
     '''Pivot the dataframe around street directions and order by STREETS global var
     '''
     if DATERANGE_TYPES[date_range_type] in ['Last Day', 'Select Date'] and 'date' in df.columns:
@@ -181,7 +232,7 @@ def selected_data(data, daterange_type=0, date_range_id=1):
         date_filter = data['month_number'] == date_range_id
     return date_filter
 
-def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date_range_id=1):
+def filter_table_data(period, day_type, orientation='ns', daterange_type=0, date_range_id=1):
     '''Return data aggregated and filtered by period
     '''
 
@@ -237,7 +288,8 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
     Returns a filtered baseline, and a filtered current dataframe
     '''
 
-    daterange = graph_bounds_for_date_range(daterange_type, date_range_id)
+    daterange = graph_bounds_for_date_range(daterange_type, date_range_id)    
+    
     filtered_daily = DATA[(DATA['street'] == street) &
                           (DATA['period'] == period) &
                           (DATA['day_type'] == day_type) &
@@ -246,21 +298,27 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
                           (DATA['date'] < daterange[1])
                           ]
 
+    if filtered_daily.empty:
+        raise ValueError("filtered_daily dataframe in filter_graph_data function is empty")
+
     base_line = BASELINE[(BASELINE['street'] == street) &
                          (BASELINE['period'] == period) &
                          (BASELINE['day_type'] == day_type) &
                          (BASELINE['direction'] == direction)]
 
-    base_line_data = filtered_daily[filtered_daily['category'] == 'Baseline']
+    if base_line.empty:
+        raise ValueError("base_line dataframe in filter_graph_data function is empty")
+
+    # base_line_data = filtered_daily[filtered_daily['category'] == 'Baseline']
 
     selected_filter = selected_data(filtered_daily, daterange_type, date_range_id)
 
-    pilot_data = filtered_daily[(filtered_daily['category'] == 'Pilot') &
+    pilot_data = filtered_daily[(filtered_daily['category'] == CATEGORY_NAME_PILOT) &
                                 ~(selected_filter)]
 
-    pilot_data_selected = filtered_daily[(filtered_daily['category'] == 'Pilot') &
+    pilot_data_selected = filtered_daily[(filtered_daily['category'] == CATEGORY_NAME_PILOT) &
                                          (selected_filter)]
-    return (base_line, base_line_data, pilot_data, pilot_data_selected)
+    return (base_line, pilot_data, pilot_data_selected)
 
 def get_orientation_from_dir(direction):
     '''Get the orientation of the street based on its direction'''
@@ -330,7 +388,7 @@ def after_cell_class(before, after):
     else:
         return 'same'
 
-def generate_row(df_row, baseline_row, row_state, orientation='ew'):
+def generate_row(df_row, baseline_row, row_state, orientation='ns'):
     """Create an HTML row from a database row (each street)
 
         :param df_row:
@@ -357,7 +415,7 @@ def generate_row(df_row, baseline_row, row_state, orientation='ew'):
                    className=generate_row_class(row_state['clicked']),
                    n_clicks=row_state['n_clicks'])
 
-def generate_table(state, day_type, period, orientation='ew', daterange_type=0, date_range_id=1):
+def generate_table(state, day_type, period, orientation='ns', daterange_type=0, date_range_id=1):
     """Generate HTML table of streets and before-after values
 
         :param state:
@@ -421,7 +479,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                     daterange_type=0, date_range_id=1):
     '''Generate a Dash bar chart of average travel times by day
     '''
-    base_line, base_df, after_df, selected_df = filter_graph_data(street,
+    base_line, after_df, selected_df = filter_graph_data(street,
                                                                   direction,
                                                                   day_type,
                                                                   period,
@@ -436,18 +494,20 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     else:
         pilot_data = generate_graph_data(after_df,
                                      marker=dict(color=PLOT_COLORS['pilot']),
-                                     name='Pilot')
+                                     name='Lane Closures')
         data.append(pilot_data)
     pilot_data_selected = generate_graph_data(selected_df,
                                               marker=dict(color=PLOT_COLORS['selected']),
                                               name='Selected')
     data.append(pilot_data_selected)
 
+    '''
     if not base_df.empty:
         baseline_data = generate_graph_data(base_df,
                                             marker=dict(color=PLOT_COLORS['baseline']),
                                             name='Baseline')
         data.append(baseline_data)
+    '''
     
     annotations = [dict(x=-0.008,
                         y=base_line.iloc[0]['tt'] + 2,
@@ -522,7 +582,7 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
                                      style={'display':'none'})
                                      ])],
              style={'display':'none'}),
-    html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
+    html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ns'], 'Weekday', 'AM Peak')),
     html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),
               ' 1+ min', html.B(' longer'), ' than baseline']),
     html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),
@@ -537,15 +597,12 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
     html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1]), className='eight columns')
                ], id=LAYOUTS['streets'])
 
-app.layout = html.Div([#html.Link(rel='stylesheet',
-                        #         href='/css/dashboard.css'),
-                       #html.Link(rel='stylesheet',
-                       #          href='/css/style.css'),
+app.layout = html.Div([
                        html.Div(children=[html.H1(children=TITLE, id='title')],
                                 className='row twelve columns'),
-                       dcc.Tabs(children=[dcc.Tab(label='East-West Streets', value='ew'),
-                                      dcc.Tab(label='North-South Streets', value='ns')],
-                                value='ew',
+                       dcc.Tabs(children=[dcc.Tab(label='DVP', value='ns'),
+                                      dcc.Tab(label='Alternate Routes', value='ns')],
+                                value='ns',
                                 id='tabs',
                                 style={'font-weight':'bold'}),
                        html.Div(id=MAIN_DIV, className='row', children=[STREETS_LAYOUT]),
@@ -661,7 +718,7 @@ def update_day_type(date_picked, daterange_type, day_type):
                Input(CONTROLS['date_picker'], 'date'),
                Input('tabs', 'value')],
               [State(div_id, 'children') for div_id in STATE_DIV_IDS.values()])
-def update_table(period, day_type, daterange_type, date_range_id, date_picked=datetime.today().date(), orientation='ew',  *state_data):
+def update_table(period, day_type, daterange_type, date_range_id, date_picked=datetime.today().date(), orientation='ns',  *state_data):
     '''Generate HTML table of before-after travel times based on selected
     day type, time period, and remember which row was previously selected
     '''
@@ -751,6 +808,7 @@ def create_row_update_function(streetname, orientation):
 
 [create_row_update_function(street, orientation) for orientation in STREETS for street in STREETS[orientation]]
 
+
 def create_row_click_function(orientation):
     @app.callback(Output(STATE_DIV_IDS[orientation], 'children'),
                   [Input(street, 'n_clicks') for street in STREETS[orientation]],
@@ -783,6 +841,7 @@ def create_row_click_function(orientation):
     return row_click
 
 [create_row_click_function(key) for key in INITIAL_STATE.keys()]
+
 
 def create_update_selected_street(orientation):
     @app.callback(Output(SELECTED_STREET_DIVS[orientation], 'children'),
