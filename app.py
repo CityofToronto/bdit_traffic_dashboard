@@ -132,9 +132,9 @@ TITLE = 'Don Valley Parkway Lane Closures: Vehicular Travel Time Monitoring'
 BASELINE_LINE = {'color': 'rgba(128, 128, 128, 0.7)',
                  'width': 4}
 PLOT = dict(margin={'t':10, 'b': 40, 'r': 40, 'l': 40, 'pad': 8})
-PLOT_COLORS = dict(pilot='rgba(22, 87, 136, 100)',
+PLOT_COLORS = dict(pilot='rgb(102,1,89)',
                    baseline='rgba(128, 128, 128, 1.0)',
-                   selected='rgba(135, 71, 22, 1.0)')
+                   selected='rgb(13,159,115)')
 FONT_FAMILY = '"Libre Franklin", sans-serif'
 
 # IDs for divs
@@ -600,11 +600,10 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
 app.layout = html.Div([
                        html.Div(children=[html.H1(children=TITLE, id='title')],
                                 className='row twelve columns'),
-                        html.Div(children=dcc.Tabs(children=[dcc.Tab(label='DVP', value='ns'),
+                       html.Div(dcc.Tabs(children=[dcc.Tab(label='DVP', value='ns'),
                                       dcc.Tab(label='Alternate Routes', value='ns')],
                                 value='ns',
-                                id='tabs',
-                                style={'font-weight':'bold', 'position':'relative'})),
+                                id='tabs'), className='row twelve columns'),
                        html.Div(id=MAIN_DIV, className='row', children=[STREETS_LAYOUT]),
                        html.Div(children=html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',

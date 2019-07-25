@@ -51,3 +51,8 @@
 #day-type-radio label:hover {
   background-color:  rgba(22, 87, 136, 0.5);
 }
+
+.tab {
+  border-top: 1px solid #d6d6d6 !important;
+  border-bottom: 1px solid #d6d6d6 !important;
+}
