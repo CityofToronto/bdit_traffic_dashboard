@@ -125,7 +125,7 @@ TIMEPERIODS = BASELINE[['day_type','period', 'period_range']].drop_duplicates().
 THRESHOLD = 1
 
 #Max travel time to fix y axis of graphs, based on the lowest of the max tt in the data or 20/30 for either graph
-MAX_TIME = dict(ns=min(20, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
+MAX_TIME = dict(ns=min(15, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
 
 # Plot appearance
 TITLE = 'Don Valley Parkway Lane Closures: Vehicular Travel Time Monitoring'
@@ -494,7 +494,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     else:
         pilot_data = generate_graph_data(after_df,
                                      marker=dict(color=PLOT_COLORS['pilot']),
-                                     name='Lane Closures')
+                                     name='Lane Closure')
         data.append(pilot_data)
     pilot_data_selected = generate_graph_data(selected_df,
                                               marker=dict(color=PLOT_COLORS['selected']),
@@ -600,11 +600,11 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
 app.layout = html.Div([
                        html.Div(children=[html.H1(children=TITLE, id='title')],
                                 className='row twelve columns'),
-                       dcc.Tabs(children=[dcc.Tab(label='DVP', value='ns'),
+                        html.Div(children=dcc.Tabs(children=[dcc.Tab(label='DVP', value='ns'),
                                       dcc.Tab(label='Alternate Routes', value='ns')],
                                 value='ns',
                                 id='tabs',
-                                style={'font-weight':'bold'}),
+                                style={'font-weight':'bold', 'position':'relative'})),
                        html.Div(id=MAIN_DIV, className='row', children=[STREETS_LAYOUT]),
                        html.Div(children=html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
