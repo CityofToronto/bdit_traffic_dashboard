@@ -92,9 +92,11 @@ BASELINE = pandasql.read_sql('''SELECT (CASE WHEN (start_crossstreet = 'Bayview 
                             THEN 'DVP between Lawrence and Wynford'
                             WHEN (start_crossstreet = 'York Mills' OR start_crossstreet = 'Lawrence') AND (end_crossstreet = 'York Mills' OR end_crossstreet = 'Lawrence')
                             THEN 'DVP between Lawrence and York Mills'
-                            END) As street, direction, start_crossstreet from_intersection, end_crossstreet to_intersection, 
-                             day_type, period, time_range period_range, round(tt,1) tt 
-                             FROM data_analysis.dvp_blip_baseline ''',
+                            END) As street, 
+                             direction, start_crossstreet from_intersection, end_crossstreet to_intersection, 
+                             b.day_type, b.period, time_range period_range, round(tt,1) tt 
+                             FROM data_analysis.dvp_blip_summary b JOIN data_analysis.dvp_periods p ON b.period = p.period
+                             WHERE study_period = 'Baseline 1: Jul-Aug 2018' ''',
                              con)
 
 WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.dvp_weeks 
@@ -125,7 +127,7 @@ TIMEPERIODS = BASELINE[['day_type','period', 'period_range']].drop_duplicates().
 THRESHOLD = 1
 
 #Max travel time to fix y axis of graphs, based on the lowest of the max tt in the data or 20/30 for either graph
-MAX_TIME = dict(ns=min(15, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
+MAX_TIME = dict(ns=min(25, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
 
 # Plot appearance
 TITLE = 'Don Valley Parkway Lane Closures: Vehicular Travel Time Monitoring'
@@ -410,7 +412,7 @@ def generate_row(df_row, baseline_row, row_state, orientation='ns'):
         data_cells.extend(generate_direction_cells(baseline_val, after_val))
 
     return html.Tr([html.Td(df_row['street'], className='segname'), 
-                   *data_cells],
+                *data_cells],
                    id=df_row['street'],
                    className=generate_row_class(row_state['clicked']),
                    n_clicks=row_state['n_clicks'])
@@ -527,7 +529,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
             }
     layout = dict(font={'family': FONT_FAMILY},
                   autosize=True,
-                  height=225,
+                  height=350,
                   barmode='relative',
                   xaxis=dict(title='Date',
                               fixedrange=True), #Prevents zoom
