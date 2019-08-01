@@ -83,21 +83,22 @@ DATA = pandasql.read_sql('''
                          ''', con)
 
 BASELINE = pandasql.read_sql('''SELECT (CASE WHEN (start_crossstreet = 'Bayview Ramp' OR start_crossstreet = 'Don Mills') AND (end_crossstreet = 'Bayview Ramp' OR end_crossstreet = 'Don Mills')
-                            THEN 'DVP between Bayview Ramp and Don Mills'
-                            WHEN (start_crossstreet = 'Bayview Ramp' OR start_crossstreet = 'Dundas') AND (end_crossstreet = 'Bayview Ramp' OR end_crossstreet = 'Dundas')
-                            THEN 'DVP between Bayview Ramp and Dundas'
-                            WHEN (start_crossstreet = 'Wynford' OR start_crossstreet = 'Don Mills') AND (end_crossstreet = 'Wynford' OR end_crossstreet = 'Don Mills')
-                            THEN 'DVP between Don Mills and Wynford'
-                            WHEN (start_crossstreet = 'Wynford' OR start_crossstreet = 'Lawrence') AND (end_crossstreet = 'Wynford' OR end_crossstreet = 'Lawrence')
-                            THEN 'DVP between Lawrence and Wynford'
-                            WHEN (start_crossstreet = 'York Mills' OR start_crossstreet = 'Lawrence') AND (end_crossstreet = 'York Mills' OR end_crossstreet = 'Lawrence')
-                            THEN 'DVP between Lawrence and York Mills'
-                            END) As street, 
-                             direction, start_crossstreet from_intersection, end_crossstreet to_intersection, 
-                             b.day_type, b.period, time_range period_range, round(tt,1) tt 
-                             FROM data_analysis.dvp_blip_summary b JOIN data_analysis.dvp_periods p ON b.period = p.period
-                             WHERE study_period = 'Baseline 1: Jul-Aug 2018' ''',
-                             con)
+                           THEN 'DVP between Bayview Ramp and Don Mills'
+                           WHEN (start_crossstreet = 'Bayview Ramp' OR start_crossstreet = 'Dundas') AND (end_crossstreet = 'Bayview Ramp' OR end_crossstreet = 'Dundas')
+                           THEN 'DVP between Bayview Ramp and Dundas'
+                           WHEN (start_crossstreet = 'Wynford' OR start_crossstreet = 'Don Mills') AND (end_crossstreet = 'Wynford' OR end_crossstreet = 'Don Mills')
+                           THEN 'DVP between Don Mills and Wynford'
+                           WHEN (start_crossstreet = 'Wynford' OR start_crossstreet = 'Lawrence') AND (end_crossstreet = 'Wynford' OR end_crossstreet = 'Lawrence')
+                           THEN 'DVP between Lawrence and Wynford'
+                           WHEN (start_crossstreet = 'York Mills' OR start_crossstreet = 'Lawrence') AND (end_crossstreet = 'York Mills' OR end_crossstreet = 'Lawrence')
+                           THEN 'DVP between Lawrence and York Mills'
+                           END) As street,
+                            direction, start_crossstreet from_intersection, end_crossstreet to_intersection,
+                            b.day_type, b.period, time_range as period_range, round(tt,1) tt
+                            FROM data_analysis.dvp_blip_summary b
+                            JOIN data_analysis.dvp_periods p ON b.period = p.period and b.day_type = p.day_type
+                            WHERE study_period = 'Baseline 1: Jul-Aug 2018' ''',
+                            con)
 
 WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.dvp_weeks 
                          ''', con)
