@@ -683,11 +683,11 @@ def generate_graph_data(data, **kwargs):
 
 def generate_graph_data_weekly(data, **kwargs):
     #for val in data['start_week'].
-    return dict(x=data['start_week'],
+    return dict(x="Week of " + pd.to_datetime(data['start_week']).dt.strftime("%b %d %Y") + " to " + pd.to_datetime(data['end_week']).dt.strftime("%b %d %Y"),
                 y=data['tt'],
-                #text=data['tt'].round(),
-                text= "Week of " + pd.to_datetime(data['start_week']).dt.strftime("%b %d, %Y") + " to " + pd.to_datetime(data['end_week']).dt.strftime("%b %d, %Y"),
-                hoverinfo='text+y',
+                text=data['tt'].round(),
+                #text= "Week of " + pd.to_datetime(data['start_week']).dt.strftime("%b %d %Y") + " to " + pd.to_datetime(data['end_week']).dt.strftime("%b %d %Y"),
+                hoverinfo='x+y',
                 textposition='inside',
                 type='bar',
                 insidetextfont=dict(color='rgba(255,255,255,1)',
@@ -987,12 +987,14 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
             LOGGER.debug('Table returned for Selected Date: %s', date_range_id.strftime('%a %b %d'))
         elif daterange_type == 2:
             LOGGER.debug('Table returned for Week')
+        elif daterange_type == 3:
+            LOGGER.debug('Table returned for Month')
         return table
     else:
         # routes that only have weekly data
         state_index = list(STREETS.keys()).index(orientation)
         state_data_dict = deserialise_state(state_data[state_index])
-        if daterange_type == 2:
+        if daterange_type in [2, 3]:
             LOGGER.debug('Update table: daterange_type:' + str(daterange_type) 
                         + ', period ' + str(period)
                         + ', day_type ' + str(day_type) 
