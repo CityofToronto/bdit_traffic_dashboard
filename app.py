@@ -72,15 +72,32 @@ DATA = pandasql.read_sql('''
                             WHEN (start_crossstreet = 'York Mills' OR start_crossstreet = 'Lawrence') AND (end_crossstreet = 'York Mills' OR end_crossstreet = 'Lawrence')
                             THEN 'DVP between Lawrence and York Mills'
                             END) As street, 
-                         direction, dt AS date, day_type, study_period AS category, period, round(tt/60,1) tt, 
+                         direction, dt AS date, day_type, 'DVP Lane Restrictions' AS category, period, round(tt/60,1) tt, 
                          CASE WHEN dt = first_value(dt) OVER (PARTITION BY direction, day_type, period ORDER BY dt DESC)
                          THEN 1 ELSE 0 END AS most_recent,
                          study_period, week_number, month_number, start_crossstreet, end_crossstreet
                          FROM data_analysis.dvp_blip_daily 
                          LEFT OUTER JOIN data_analysis.dvp_weeks weeks ON dt >= week AND dt < week + INTERVAL '1 week'
                          LEFT OUTER JOIN data_analysis.dvp_months months ON dt >= month AND dt < month + INTERVAL '1 month'
-                         WHERE study_period = 'DVP Lane Restrictions'
+                         WHERE study_period = 'DVP Lane Restrictions 1' or study_period = 'DVP Lane Restrictions 2'
                          ''', con)
+
+ALTERNATE_DATA = pandasql.read_sql('''
+                                    SELECT name1 street, d.street main_street, d.direction, d.start_street, d.end_street,
+                                     d.study_period, 'DVP Lane Restrictions' AS category, date_range, d.period, d.tt, d.day_type, 
+                                     week_number, month_number, LOWER(date_range) as start_week, UPPER(date_range) AS end_week
+                                    FROM 
+                                    (SELECT DISTINCT ON (d1.street, d1.start_street, d1.end_street) d1.street, d1.start_street, d1.end_street, 
+                                    d1.street || ' Between ' || d1.start_street || ' and ' || d1.end_street as name1
+                                    FROM data_analysis.dvp_alt_routes_here_weekly d1, data_analysis.dvp_alt_routes_here_weekly d2 
+                                    WHERE d1.street = d2.street and d1.start_street = d2.end_street and d1.direction in ('NB', 'EB')
+                                    ORDER BY d1.street) n
+                                    JOIN
+                                    (SELECT * FROM data_analysis.dvp_alt_routes_here_weekly) d
+                                    ON n.street = d.street AND ( (n.start_street = d.start_street AND n.end_street = d.end_street) OR (n.start_street = d.end_street AND n.end_street = d.start_street)) 
+                                    LEFT OUTER JOIN data_analysis.dvp_weeks weeks ON  date_range @> week 
+                                    LEFT OUTER JOIN data_analysis.dvp_months months ON (LOWER(date_range) >= month AND LOWER(date_range) <= month + INTERVAL '1 month')
+                                    ''', con)
 
 BASELINE = pandasql.read_sql('''SELECT (CASE WHEN (start_crossstreet = 'Bayview Ramp' OR start_crossstreet = 'Don Mills') AND (end_crossstreet = 'Bayview Ramp' OR end_crossstreet = 'Don Mills')
                            THEN 'DVP between Bayview Ramp and Don Mills'
@@ -99,6 +116,21 @@ BASELINE = pandasql.read_sql('''SELECT (CASE WHEN (start_crossstreet = 'Bayview 
                             JOIN data_analysis.dvp_periods p ON b.period = p.period and b.day_type = p.day_type
                             WHERE study_period = 'Baseline 1: Jul-Aug 2018' ''',
                             con)
+
+ALTERNATE_BASELINE = pandasql.read_sql(''' 
+                                    SELECT name1 street, d.street main_street, d.direction, d.start_street from_intersection, d.end_street to_intersection, d.study_period AS category, d.period, d.tt, d.day_type
+                                        FROM 
+                                        (SELECT DISTINCT ON (d1.street, d1.start_street, d1.end_street) d1.street, d1.start_street, d1.end_street, 
+                                        d1.street || ' Between ' || d1.start_street || ' and ' || d1.end_street as name1
+                                        FROM data_analysis.dvp_here_summaryb_conf30 d1, data_analysis.dvp_here_summaryb_conf30 d2 
+                                        WHERE d1.street = d2.street and d1.start_street = d2.end_street and d1.direction in ('NB', 'EB')
+                                        ORDER BY d1.street) n
+                                        JOIN 
+                                        (SELECT * FROM data_analysis.dvp_here_summaryb_conf30) d
+                                        ON n.street = d.street AND ( (n.start_street = d.start_street AND n.end_street = d.end_street) OR (n.start_street = d.end_street AND n.end_street = d.start_street)) 
+                                        WHERE d.study_period = 'Baseline 2: May-Jun 2019'
+                                        ''',
+                                        con)
 
 WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.dvp_weeks 
                          ''', con)
@@ -121,14 +153,48 @@ con.close()
 # Data management constants
 
 STREETS = OrderedDict(ns=['DVP between Bayview Ramp and Don Mills', 'DVP between Bayview Ramp and Dundas', 'DVP between Don Mills and Wynford', 
-                    'DVP between Lawrence and Wynford', 'DVP between Lawrence and York Mills'])
-DIRECTIONS = OrderedDict(ns=['NB', 'SB'])
+                    'DVP between Lawrence and Wynford', 'DVP between Lawrence and York Mills'], 
+                    alternate=[
+                            "Bayview Between DVP and Eglinton",
+                            "Bayview Between Eglinton and Lawrence",
+                            "Bayview Between Lawrence and York Mills",
+                            "Bayview Between York Mills and 401",
+                            "Don Mills Between DVP and Eglinton",
+                            "Don Mills Between Eglinton and Lawrence",
+                            "Don Mills Between Lawrence and York Mills",
+                            "Don Mills Between York Mills and Sheppard",
+                            "Lawrence Between Don Mills and DVP",
+                            "Lawrence Between DVP and Victoria Park Ave",
+                            "Lawrence Between Leslie and Don Mills",
+                            "Leslie Between Eglinton and Lawrence",
+                            "Leslie Between Lawrence and York Mills",
+                            "Leslie Between York Mills and 401",
+                            "OConnor Between Broadview and Don Mills",
+                            "OConnor Between Don Mills and Woodbine",
+                            "OConnor Between Woodbine and Eglinton",
+                            "Victoria Park Ave Between Eglinton and Lawrence",
+                            "Victoria Park Ave Between Ellesmere and 401",
+                            "Victoria Park Ave Between Lawrence and Ellesmere",
+                            "Victoria Park Ave Between St Clair and Eglinton",
+                            "Woodbine Between Danforth and OConnor",
+                            "Woodbine Between Queen and Danforth",
+                            "York Mills Between Bayview and Leslie",
+                            "York Mills Between Don Mills and DVP",
+                            "York Mills Between DVP and Victoria Park Ave",
+                            "York Mills Between Leslie and Don Mills",
+                    ])
+                    
+DIRECTIONS = OrderedDict(ns=['NB', 'SB'], alternate=['NB', 'SB', 'EB', 'WB'])
 DATERANGE = [DATA['date'].min(), DATA['date'].max()]
+
+DATERANGE_ALTERNATE = [ALTERNATE_DATA['start_week'].min(), ALTERNATE_DATA['end_week'].max()]
+
 TIMEPERIODS = BASELINE[['day_type','period', 'period_range']].drop_duplicates().sort_values(['day_type', 'period_range'])
 THRESHOLD = 1
 
 #Max travel time to fix y axis of graphs, based on the lowest of the max tt in the data or 20/30 for either graph
-MAX_TIME = dict(ns=min(25, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
+MAX_TIME = dict(ns=min(25, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max()), 
+                alternate=min(25, ALTERNATE_DATA[ALTERNATE_DATA['direction'].isin(DIRECTIONS['alternate'])].tt.max())) 
 
 # Plot appearance
 TITLE = 'Don Valley Parkway Lane Closures: Vehicular Travel Time Monitoring'
@@ -214,8 +280,8 @@ def pivot_order(df, orientation = 'ns', date_range_type=1):
     '''
     if DATERANGE_TYPES[date_range_type] in ['Last Day', 'Select Date'] and 'date' in df.columns:
         pivoted = df.pivot_table(index=['street', 'date'],
-                                 columns='direction',
-                                 values='tt').reset_index()
+                                columns='direction',
+                                values='tt').reset_index()
     else:
         pivoted = df.pivot_table(index='street', columns='direction', values='tt').reset_index()
     pivoted.street = pivoted.street.astype("category")
@@ -235,27 +301,67 @@ def selected_data(data, daterange_type=0, date_range_id=1):
         date_filter = data['month_number'] == date_range_id
     return date_filter
 
+
+def selected_data_alternate(data, daterange_type=2, date_range_id=1):
+    '''Returns a boolean column indicating whether the provided data was selected or not
+    '''
+    if DATERANGE_TYPES[daterange_type] == 'Select Week':
+        date_filter = data['week_number'] == date_range_id
+    elif DATERANGE_TYPES[daterange_type] == 'Select Month':
+        date_filter = data['month_number'] == date_range_id
+    return date_filter
+
 def filter_table_data(period, day_type, orientation='ns', daterange_type=0, date_range_id=1):
     '''Return data aggregated and filtered by period
     '''
 
-    date_filter = selected_data(DATA, daterange_type, date_range_id)
+    if orientation != 'alternate':
 
-    #current data
-    filtered = DATA[(DATA['period'] == period) &
-                    (DATA['day_type'] == day_type) &
-                    (DATA['direction'].isin(DIRECTIONS[orientation])) &
-                    (DATA['category'] != 'Excluded') &
-                    (date_filter)]
-    pivoted = pivot_order(filtered, orientation, daterange_type)
+        date_filter = selected_data(DATA, daterange_type, date_range_id)
 
-    #baseline data
-    filtered_base = BASELINE[(BASELINE['period'] == period) &
-                             (BASELINE['day_type'] == day_type) &
-                             (BASELINE['direction'].isin(DIRECTIONS[orientation]))]
-    pivoted_baseline = pivot_order(filtered_base, orientation)
+        #current data
+        filtered = DATA[(DATA['period'] == period) &
+                        (DATA['day_type'] == day_type) &
+                        (DATA['direction'].isin(DIRECTIONS[orientation])) &
+                        (DATA['category'] != 'Excluded') &
+                        (date_filter)]
+        pivoted = pivot_order(filtered, orientation, daterange_type)
 
-    return (pivoted, pivoted_baseline)
+        #baseline data
+        filtered_base = BASELINE[(BASELINE['period'] == period) &
+                                (BASELINE['day_type'] == day_type) &
+                                (BASELINE['direction'].isin(DIRECTIONS[orientation]))]
+        pivoted_baseline = pivot_order(filtered_base, orientation)
+
+        return (pivoted, pivoted_baseline)
+
+    else: 
+        # weekly data 
+
+        if DATERANGE_TYPES[daterange_type] == 'Last Day' or DATERANGE_TYPES[daterange_type] == 'Select Date':
+            # since we're only doing weekly or monthly times, these should return nothing
+            pivoted = pd.DataFrame()
+            pivoted_baseline = pd.DataFrame()
+
+        else: 
+
+            date_filter = selected_data(ALTERNATE_DATA, daterange_type, date_range_id)
+            #current data
+            filtered = ALTERNATE_DATA[(ALTERNATE_DATA['period'] == period) &
+                            (ALTERNATE_DATA['day_type'] == day_type) &
+                            (ALTERNATE_DATA['direction'].isin(DIRECTIONS[orientation])) &
+                            (ALTERNATE_DATA['category'] != 'Excluded') &
+                            (date_filter)]
+            pivoted = pivot_order(filtered, orientation, daterange_type)
+
+            #baseline data
+            filtered_base = ALTERNATE_BASELINE[(ALTERNATE_BASELINE['period'] == period) &
+                                    (ALTERNATE_BASELINE['day_type'] == day_type) &
+                                    (ALTERNATE_BASELINE['direction'].isin(DIRECTIONS[orientation]))]
+            pivoted_baseline = pivot_order(filtered_base, orientation)
+
+        return (pivoted, pivoted_baseline)
+
 
 def graph_bounds_for_date_range(daterange_type, date_range_id):
     if DATERANGE_TYPES[daterange_type] == 'Last Day':
@@ -285,6 +391,36 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
                  DATERANGE_TYPES[daterange_type], date_picked, start_range, end_range)
     return [start_range, end_range]
 
+
+def graph_bounds_for_date_range_alternate(daterange_type, date_range_id):
+    if DATERANGE_TYPES[daterange_type] == 'Last Day':
+        end_range = DATERANGE_ALTERNATE[1] + relativedelta(days=1)
+        start_range = DATERANGE_ALTERNATE[1] - relativedelta(weeks=2)
+        date_picked = date_range_id
+    elif DATERANGE_TYPES[daterange_type] in ['Select Date', 'Select Week']:
+        if DATERANGE_TYPES[daterange_type] == 'Select Date':
+            date_picked = date_range_id
+        else:
+            date_picked = WEEKS[WEEKS['week_number'] == date_range_id]['week'].iloc[0]
+        start_of_week = date_picked - relativedelta(days=date_picked.weekday())
+        start_range = max(start_of_week - relativedelta(weeks=1), DATERANGE_ALTERNATE[0])
+        end_range = min(start_of_week + relativedelta(weeks=2), DATERANGE_ALTERNATE[1] + relativedelta(days=1))
+    elif DATERANGE_TYPES[daterange_type] == 'Select Month':
+        date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0].date()
+        if date_picked == DATERANGE_ALTERNATE[1].replace(day=1):
+            #End of data within month picked, display last month of data
+            start_range = max(DATERANGE_ALTERNATE[1] - relativedelta(months=1), DATERANGE_ALTERNATE[0])
+        else:
+            start_range = max(date_picked - relativedelta(days=date_picked.day - 1), DATERANGE_ALTERNATE[0])
+        end_range = min(date_picked - relativedelta(days=date_picked.day - 1) + relativedelta(months=1),
+                        DATERANGE_ALTERNATE[1] + relativedelta(days=1))
+    else:
+        raise ValueError('Wrong daterange_type provided: {}'.format(daterange_type))
+    LOGGER.debug('Filtering (for alternate) for %s. Date picked: %s, Start Range: %s, End Range: %s',
+                 DATERANGE_TYPES[daterange_type], date_picked, start_range, end_range)
+    return [start_range, end_range]
+
+
 def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
                       daterange_type=0, date_range_id=1):
     '''Filter dataframes by street, direction, day_type, and period
@@ -292,7 +428,7 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
     '''
 
     daterange = graph_bounds_for_date_range(daterange_type, date_range_id)    
-    
+
     filtered_daily = DATA[(DATA['street'] == street) &
                           (DATA['period'] == period) &
                           (DATA['day_type'] == day_type) &
@@ -301,8 +437,11 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
                           (DATA['date'] < daterange[1])
                           ]
 
+
     if filtered_daily.empty:
-        raise ValueError("filtered_daily dataframe in filter_graph_data function is empty")
+        LOGGER.debug("filtered_daily dataframe in filter_graph_data function is empty")
+        return (pd.DataFrame(), pd.DataFrame(), pd.DataFrame)
+        # raise ValueError("filtered_daily dataframe in filter_graph_data function is empty")
 
     base_line = BASELINE[(BASELINE['street'] == street) &
                          (BASELINE['period'] == period) &
@@ -310,9 +449,11 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
                          (BASELINE['direction'] == direction)]
 
     if base_line.empty:
-        raise ValueError("base_line dataframe in filter_graph_data function is empty")
+        LOGGER.debug("base_line dataframe in filter_graph_data function is empty")
+        return (pd.DataFrame(), pd.DataFrame(), pd.DataFrame)
+        #raise ValueError("base_line dataframe in filter_graph_data function is empty")
 
-    # base_line_data = filtered_daily[filtered_daily['category'] == 'Baseline']
+    base_line_data = filtered_daily[filtered_daily['category'] == 'Baseline']
 
     selected_filter = selected_data(filtered_daily, daterange_type, date_range_id)
 
@@ -322,6 +463,66 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
     pilot_data_selected = filtered_daily[(filtered_daily['category'] == CATEGORY_NAME_PILOT) &
                                          (selected_filter)]
     return (base_line, pilot_data, pilot_data_selected)
+
+
+
+
+def filter_graph_data_weekly(street, direction, day_type='Weekday', period='AMPK',
+                      daterange_type=2, date_range_id=1):
+    '''Filter dataframes by street, direction, day_type, and period
+    Returns a filtered baseline, and a filtered current dataframe
+    '''
+
+    daterange = graph_bounds_for_date_range_alternate(daterange_type, date_range_id)
+
+    filtered_weekly = ALTERNATE_DATA[(ALTERNATE_DATA['street'] == street) &
+                          (ALTERNATE_DATA['period'] == period) &
+                          (ALTERNATE_DATA['day_type'] == day_type) &
+                          (ALTERNATE_DATA['direction'] == direction) & 
+                          (ALTERNATE_DATA['start_week'] >= daterange[0]) &
+                          (ALTERNATE_DATA['end_week'] < daterange[1]) 
+                          ]
+
+    if filtered_weekly.empty:
+        LOGGER.debug("filtered_daily dataframe in filter_graph_data weekly function is empty")
+        return (pd.DataFrame(), pd.DataFrame(), pd.DataFrame)
+        #raise ValueError("filtered_daily dataframe in filter_graph_data weekly function is empty")
+
+
+    base_line = ALTERNATE_BASELINE[(ALTERNATE_BASELINE['street'] == street) &
+                         (ALTERNATE_BASELINE['period'] == period) &
+                         (ALTERNATE_BASELINE['day_type'] == day_type) &
+                         (ALTERNATE_BASELINE['direction'] == direction)]
+
+    if base_line.empty:
+        LOGGER.debug("baseline dataframe in filter_graph_data weekly function is empty")
+        return (pd.DataFrame(), pd.DataFrame(), pd.DataFrame)
+        #raise ValueError("base_line dataframe in filter_graph_data weekly function is empty")
+
+    base_line_data = filtered_weekly[filtered_weekly['category'] == 'Baseline']
+
+
+    if DATERANGE_TYPES[daterange_type] == 'Last Day' or DATERANGE_TYPES[daterange_type] == 'Select Date':
+        # since we're only doing weekly or monthly times, these should return nothing
+        pilot_data = pd.DataFrame()
+        pilot_data_selected = pd.DataFrame()   
+
+    else: 
+
+        date_filter = selected_data_alternate(ALTERNATE_DATA, daterange_type, date_range_id)
+
+        selected_filter = selected_data_alternate(filtered_weekly, daterange_type, date_range_id)
+
+        pilot_data = filtered_weekly[(filtered_weekly['category'] == CATEGORY_NAME_PILOT) &
+                                    ~(selected_filter)]
+
+        pilot_data_selected = filtered_weekly[(filtered_weekly['category'] == CATEGORY_NAME_PILOT) &
+                                            (selected_filter)]
+    return (base_line, pilot_data, pilot_data_selected)
+
+
+
+
 
 def get_orientation_from_dir(direction):
     '''Get the orientation of the street based on its direction'''
@@ -438,7 +639,8 @@ def generate_table(state, day_type, period, orientation='ns', daterange_type=0, 
                  + ', period: ' + str(period)
                  + ', day_type: ' + str(day_type) 
                  + ', date_range_id: ' + str(date_range_id) 
-                 + ', orientation: ' + str(orientation) )
+                 + ', orientation: ' + str(orientation) 
+                 + ', state: ' + str(state))
     filtered_data, baseline = filter_table_data(period, day_type, orientation, daterange_type, date_range_id)
     #Current date for the data, to replace "After" header
     if DATERANGE_TYPES[daterange_type] in ['Last Day', 'Select Date']:
@@ -478,16 +680,44 @@ def generate_graph_data(data, **kwargs):
                                     size=12),
                 **kwargs)
 
-def generate_figure(street, direction, day_type='Weekday', period='AMPK',
+
+def generate_graph_data_weekly(data, **kwargs):
+    #for val in data['start_week'].
+    return dict(x=data['start_week'],
+                y=data['tt'],
+                #text=data['tt'].round(),
+                text= "Week of " + pd.to_datetime(data['start_week']).dt.strftime("%b %d, %Y") + " to " + pd.to_datetime(data['end_week']).dt.strftime("%b %d, %Y"),
+                hoverinfo='text+y',
+                textposition='inside',
+                type='bar',
+                insidetextfont=dict(color='rgba(255,255,255,1)',
+                                    size=12),
+                **kwargs)
+
+
+def generate_figure(street, direction, tab, day_type='Weekday', period='AMPK',
                     daterange_type=0, date_range_id=1):
     '''Generate a Dash bar chart of average travel times by day
     '''
-    base_line, after_df, selected_df = filter_graph_data(street,
+
+    if tab == 'ns':
+        base_line, after_df, selected_df = filter_graph_data(street,
                                                                   direction,
                                                                   day_type,
                                                                   period,
                                                                   daterange_type,
-                                                                  date_range_id)
+                                                                  date_range_id, 
+                                                                  )
+
+    else:
+        # weekly data
+        base_line, after_df, selected_df = filter_graph_data_weekly(street,
+                                                                  direction,
+                                                                  day_type,
+                                                                  period,
+                                                                  daterange_type,
+                                                                  date_range_id, 
+                                                                  )
 
     orientation = get_orientation_from_dir(direction)
     data = []
@@ -495,13 +725,25 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
         if selected_df.empty:
             return None
     else:
-        pilot_data = generate_graph_data(after_df,
+        if tab == 'ns':
+            pilot_data = generate_graph_data(after_df,
                                      marker=dict(color=PLOT_COLORS['pilot']),
                                      name='Lane Closure')
+        else:
+            pilot_data = generate_graph_data_weekly(after_df,
+                                     marker=dict(color=PLOT_COLORS['pilot']),
+                                     name='Lane Closure')
+
         data.append(pilot_data)
-    pilot_data_selected = generate_graph_data(selected_df,
-                                              marker=dict(color=PLOT_COLORS['selected']),
-                                              name='Selected')
+
+    if tab == 'ns':
+        pilot_data_selected = generate_graph_data(selected_df,
+                                                marker=dict(color=PLOT_COLORS['selected']),
+                                                name='Selected')
+    else:
+        pilot_data_selected = generate_graph_data_weekly(selected_df,
+                                                marker=dict(color=PLOT_COLORS['selected']),
+                                                name='Selected')
     data.append(pilot_data_selected)
 
     '''
@@ -604,7 +846,7 @@ app.layout = html.Div([
                        html.Div(children=[html.H1(children=TITLE, id='title')],
                                 className='row twelve columns'),
                        html.Div(dcc.Tabs(children=[dcc.Tab(label='DVP', value='ns'),
-                                      dcc.Tab(label='Alternate Routes', value='ns')],
+                                      dcc.Tab(label='Alternate Routes', value='alternate')],
                                 value='ns',
                                 id='tabs'), className='row twelve columns'),
                        html.Div(id=MAIN_DIV, className='row', children=[STREETS_LAYOUT]),
@@ -635,7 +877,7 @@ app.layout = html.Div([
               [Input('tabs', 'value')])
 def display_streets(value):
     '''Switch tabs display while retaining frontend client-side'''
-    if value == 'ew':
+    if value == 'alternate':
         return {'display':'inline'}
     elif value == 'ns':
         return {'display':'inline'}
@@ -724,28 +966,47 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
     '''Generate HTML table of before-after travel times based on selected
     day type, time period, and remember which row was previously selected
     '''
-    LOGGER.debug('Update table: daterange_type:' + str(daterange_type) 
-                 + ', period ' + str(period)
-                 + ', day_type ' + str(day_type) 
-                 + ', date_range_id ' + str(date_range_id) 
-                 + ', orientation  ' + str(orientation)     )
-    if daterange_type == 1:
-        date_range_id = datetime.strptime(date_picked, '%Y-%m-%d').date()
-    state_index = list(STREETS.keys()).index(orientation)
-    state_data_dict = deserialise_state(state_data[state_index])
+    if orientation != 'alternate':
+        LOGGER.debug('Update table: daterange_type:' + str(daterange_type) 
+                    + ', period ' + str(period)
+                    + ', day_type ' + str(day_type) 
+                    + ', date_range_id ' + str(date_range_id) 
+                    + ', orientation  ' + str(orientation)     )
+        if daterange_type == 1:
+            date_range_id = datetime.strptime(date_picked, '%Y-%m-%d').date()
+        state_index = list(STREETS.keys()).index(orientation)
+        state_data_dict = deserialise_state(state_data[state_index])
 
-    table = generate_table(state_data_dict, day_type, period,
-                           orientation=orientation,
-                           daterange_type=daterange_type,
-                           date_range_id=date_range_id)
-    if daterange_type == 0:
-        LOGGER.debug('Table returned for Last Day')
-    elif  daterange_type == 1:
-        LOGGER.debug('Table returned for Selected Date: %s', date_range_id.strftime('%a %b %d'))
-    elif daterange_type == 2:
-        LOGGER.debug('Table returned for Week')
+        table = generate_table(state_data_dict, day_type, period,
+                            orientation=orientation,
+                            daterange_type=daterange_type,
+                            date_range_id=date_range_id)
+        if daterange_type == 0:
+            LOGGER.debug('Table returned for Last Day')
+        elif  daterange_type == 1:
+            LOGGER.debug('Table returned for Selected Date: %s', date_range_id.strftime('%a %b %d'))
+        elif daterange_type == 2:
+            LOGGER.debug('Table returned for Week')
+        return table
+    else:
+        # routes that only have weekly data
+        state_index = list(STREETS.keys()).index(orientation)
+        state_data_dict = deserialise_state(state_data[state_index])
+        if daterange_type == 2:
+            LOGGER.debug('Update table: daterange_type:' + str(daterange_type) 
+                        + ', period ' + str(period)
+                        + ', day_type ' + str(day_type) 
+                        + ', date_range_id ' + str(date_range_id) 
+                        + ', orientation  ' + str(orientation))
+             
+            table = generate_table(state_data_dict, day_type, period,
+                                orientation=orientation,
+                                daterange_type=daterange_type,
+                                date_range_id=date_range_id)
+            LOGGER.debug('Table returned for Week')
+            return table
+        return
 
-    return table
 
 @app.callback(Output(CONTROLS['date_range_span'], 'style'),
               [Input(CONTROLS['date_range_type'], 'value')])
@@ -788,7 +1049,6 @@ def update_date_range_value(daterange_type, date_range_id):
         return date_range_id
     else:
         return 1
-
 
 
 def create_row_update_function(streetname, orientation):
@@ -907,10 +1167,12 @@ def create_update_graph_div(graph_number):
                      GRAPHS[graph_number], street, period, day_type, daterange_type, date_range)
         figure = generate_figure(street[0],
                                  DIRECTIONS[orientation][graph_number],
+                                 orientation,
                                  period=period,
                                  day_type=day_type,
                                  daterange_type=daterange_type,
-                                 date_range_id=date_range)
+                                 date_range_id=date_range, 
+                                 )
         if figure: 
             return html.Div(dcc.Graph(id = GRAPHS[graph_number],
                                       figure = figure,
