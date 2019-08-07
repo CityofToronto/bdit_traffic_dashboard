@@ -97,7 +97,9 @@ ALTERNATE_DATA = pandasql.read_sql('''
                                     ON n.street = d.street AND ( (n.start_street = d.start_street AND n.end_street = d.end_street) OR (n.start_street = d.end_street AND n.end_street = d.start_street)) 
                                     LEFT OUTER JOIN data_analysis.dvp_weeks weeks ON  date_range @> week 
                                     LEFT OUTER JOIN data_analysis.dvp_months months ON (LOWER(date_range) >= month AND LOWER(date_range) <= month + INTERVAL '1 month')
+                                    WHERE d.direction in ('NB', 'SB')
                                     ''', con)
+
 
 BASELINE = pandasql.read_sql('''SELECT (CASE WHEN (start_crossstreet = 'Bayview Ramp' OR start_crossstreet = 'Don Mills') AND (end_crossstreet = 'Bayview Ramp' OR end_crossstreet = 'Don Mills')
                            THEN 'DVP between Bayview Ramp and Don Mills'
@@ -132,8 +134,10 @@ ALTERNATE_BASELINE = pandasql.read_sql('''
                                         ''',
                                         con)
 
-WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.dvp_weeks 
+WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.dvp_weeks
+                        WHERE CURRENT_DATE > (week + INTERVAL '7 days') 
                          ''', con)
+						 
 MONTHS = pandasql.read_sql('''SELECT * FROM data_analysis.dvp_months
                          ''', con, parse_dates=['month'])
 WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week'].astype(str)
@@ -683,13 +687,14 @@ def generate_graph_data(data, **kwargs):
 
 def generate_graph_data_weekly(data, **kwargs):
     #for val in data['start_week'].
-    return dict(x="Week of " + pd.to_datetime(data['start_week']).dt.strftime("%b %d %Y") + " to " + pd.to_datetime(data['end_week']).dt.strftime("%b %d %Y"),
+    return dict(x=pd.to_datetime(data['start_week']).dt.strftime("%b %d %Y") + " to " + pd.to_datetime(data['end_week']).dt.strftime("%b %d %Y"),
                 y=data['tt'],
                 text=data['tt'].round(),
                 #text= "Week of " + pd.to_datetime(data['start_week']).dt.strftime("%b %d %Y") + " to " + pd.to_datetime(data['end_week']).dt.strftime("%b %d %Y"),
                 hoverinfo='x+y',
                 textposition='inside',
                 type='bar',
+                #category_orders=data['start_week'],
                 insidetextfont=dict(color='rgba(255,255,255,1)',
                                     size=12),
                 **kwargs)
@@ -708,6 +713,7 @@ def generate_figure(street, direction, tab, day_type='Weekday', period='AMPK',
                                                                   daterange_type,
                                                                   date_range_id, 
                                                                   )
+        x_axes_name = 'Date'
 
     else:
         # weekly data
@@ -718,6 +724,7 @@ def generate_figure(street, direction, tab, day_type='Weekday', period='AMPK',
                                                                   daterange_type,
                                                                   date_range_id, 
                                                                   )
+        x_axes_name = 'Week'
 
     orientation = get_orientation_from_dir(direction)
     data = []
@@ -740,10 +747,12 @@ def generate_figure(street, direction, tab, day_type='Weekday', period='AMPK',
         pilot_data_selected = generate_graph_data(selected_df,
                                                 marker=dict(color=PLOT_COLORS['selected']),
                                                 name='Selected')
+        
     else:
         pilot_data_selected = generate_graph_data_weekly(selected_df,
                                                 marker=dict(color=PLOT_COLORS['selected']),
                                                 name='Selected')
+
     data.append(pilot_data_selected)
 
     '''
@@ -774,7 +783,7 @@ def generate_figure(street, direction, tab, day_type='Weekday', period='AMPK',
                   autosize=True,
                   height=350,
                   barmode='relative',
-                  xaxis=dict(title='Date',
+                  xaxis=dict(title=x_axes_name,
                               fixedrange=True), #Prevents zoom
                   yaxis=dict(title='Travel Time (min)',
                               range=[0, MAX_TIME[orientation]],
@@ -785,6 +794,7 @@ def generate_figure(street, direction, tab, day_type='Weekday', period='AMPK',
                   legend={'xanchor':'right'}
                   )
     return {'layout': layout, 'data': data}
+
                                           
 #Elements to include in the "main-"
 STREETS_LAYOUT = html.Div(children=[html.Div(children=[
@@ -806,6 +816,65 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
                                     options=[{'label': label,
                                               'value': value}
                                              for value, label in enumerate(DATERANGE_TYPES)],
+                                    value=0,
+                                    clearable=False),
+                                    title='Select a date range type to filter table data'),
+                           html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
+                                                  options=generate_date_ranges(daterange_type=3),
+                                                  value = 1,
+                                                  clearable=False),
+                                     id=CONTROLS['date_range_span'],
+                                     style={'display':'none'}),
+                           html.Span(dcc.DatePickerSingle(id=CONTROLS['date_picker'],
+                                                          clearable=False,
+                                                          min_date_allowed=DATERANGE[0],
+                                                          max_date_allowed=DATERANGE[1],
+                                                          date=DATERANGE[1],
+                                                          display_format='MMM DD',
+                                                          month_format='MMM',
+                                                          show_outside_days=True),
+                                     id=CONTROLS['date_picker_span'],
+                                     style={'display':'none'})
+                                     ])],
+             style={'display':'none'}),
+    html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ns'], 'Weekday', 'AM Peak')),
+    html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),
+              ' 1+ min', html.B(' longer'), ' than baseline']),
+    html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),
+              ' 1+ min', html.B(' shorter'), ' than baseline']),
+    ],
+                           className='four columns'),
+    html.H2(id=STREETNAME_DIV[0], children=[html.B('Dundas Eastbound:'),
+                                                ' Bathurst - Jarvis']),
+    html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0]), className='eight columns'),
+    html.H2(id=STREETNAME_DIV[1], children=[html.B('Dundas Westbound:'),
+                                                ' Jarvis - Bathurst']),
+    html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1]), className='eight columns')
+               ], id=LAYOUTS['streets'])
+
+
+
+STREETS_LAYOUT_ALTERNATE = html.Div(children=[html.Div(children=[
+    html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),
+    html.Button(id=CONTROLS['toggle'], children='Show Filters'),
+    html.Div(id=CONTROLS['div_id'],
+             children=[dcc.RadioItems(id=CONTROLS['timeperiods'],
+                                      value=TIMEPERIODS.iloc[0]['period'],
+                                      className='radio-toolbar'),
+                       dcc.RadioItems(id=CONTROLS['day_types'],
+                                      options=[{'label': day_type,
+                                                'value': day_type,
+                                                'id': day_type}
+                                               for day_type in TIMEPERIODS['day_type'].unique()],
+                                      value=TIMEPERIODS.iloc[0]['day_type'],
+                                      className='radio-toolbar'),
+                       html.Span(children=[
+                           html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
+                                    options=[{'label': 'Select Week',
+                                              'value': 2}, 
+                                              {'label': 'Select Month',
+                                              'value': 3
+                                              }],
                                     value=0,
                                     clearable=False),
                                     title='Select a date range type to filter table data'),
@@ -872,6 +941,16 @@ app.layout = html.Div([
 #                                         Controllers                                             #
 #                                                                                                 #
 ###################################################################################################
+
+
+@app.callback(Output(MAIN_DIV, 'children'),
+              [Input('tabs', 'value')])
+def render_content(tab):
+    if tab == 'ns':
+        return STREETS_LAYOUT
+    else: 
+        return STREETS_LAYOUT_ALTERNATE
+	
 
 @app.callback(Output(LAYOUTS['streets'], 'style'),
               [Input('tabs', 'value')])
