@@ -33,32 +33,6 @@ else:
     dbset = CONFIG['DBSETTINGS']
     con = connect(**dbset)
 
-"""
-DATA = pandasql.read_sql('''
-                         SELECT street, direction, dt AS date, day_type, category, period, round(tt,1) tt, 
-                         CASE WHEN dt = first_value(dt) OVER (PARTITION BY direction, day_type, period ORDER BY dt DESC)
-                         THEN 1 ELSE 0 END AS most_recent,
-                         week_number, month_number 
-                         FROM king_pilot.dash_daily
-                         LEFT OUTER JOIN king_pilot.pilot_weeks weeks ON dt >= week AND dt < week + INTERVAL '1 week'
-                         LEFT OUTER JOIN king_pilot.pilot_months months ON dt >= month AND dt < month + INTERVAL '1 month'
-                         ''', con)
-
-BASELINE = pandasql.read_sql('''SELECT street, direction, from_intersection, to_intersection, 
-                             day_type, period, period_range, round(tt,1) tt 
-                             FROM king_pilot.dash_baseline ''',
-                             con)
-WEEKS = pandasql.read_sql('''SELECT * FROM king_pilot.pilot_weeks 
-                         ''', con)
-MONTHS = pandasql.read_sql('''SELECT * FROM king_pilot.pilot_months
-                         ''', con, parse_dates=['month'])
-WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week'].astype(str)
-WEEKS.sort_values(by='week_number', inplace=True)
-MONTHS['label'] = 'Month ' + MONTHS['month_number'].astype(str) + ': ' + MONTHS['month'].dt.strftime("%b '%y")
-RANGES = [pd.DataFrame(), pd.DataFrame(), WEEKS, MONTHS]
-
-"""
-
 DATA = pandasql.read_sql('''
                          SELECT 
                             (CASE WHEN (start_crossstreet = 'Bayview Ramp' OR start_crossstreet = 'Don Mills') AND (end_crossstreet = 'Bayview Ramp' OR end_crossstreet = 'Don Mills')
@@ -187,6 +161,11 @@ STREETS = OrderedDict(ns=['DVP between Bayview Ramp and Don Mills', 'DVP between
                             "York Mills Between DVP and Victoria Park Ave",
                             "York Mills Between Leslie and Don Mills"
                     ])
+
+DROPDOWN_MAIN_STREETS = OrderedDict(
+    alternate=['Bayview', 'Don Mills', 'Leslie', 'Victoria Park Ave', 'Woodbine'], 
+    alternate_ew=['Lawrence', 'OConnor', 'York Mills']
+)
                     
 DIRECTIONS = OrderedDict(ns=['NB', 'SB'], alternate=['NB', 'SB'], alternate_ew=['EB', 'WB'])
 DATERANGE = [DATA['date'].min(), DATA['date'].max()]
@@ -226,7 +205,8 @@ CONTROLS = dict(div_id='controls-div',
                 date_range='date-range-dropbown',
                 date_range_span='date-range-span',
                 date_picker='date-picker-div',
-                date_picker_span='date-picker-span')
+                date_picker_span='date-picker-span', 
+                main_street='main-streets')
 DATERANGE_TYPES = ['Last Day', 'Select Date', 'Select Week', 'Select Month']
 GRAPHS = ['dvp_graph', 'alternate_graph', 'alternate_graph_ew']
 GRAPHDIVS = ['dvp_div', 'alternate_graph_div', 'alternate_graph_div_ew']
@@ -310,13 +290,14 @@ def selected_data(data, daterange_type=0, date_range_id=1):
 def selected_data_alternate(data, daterange_type=2, date_range_id=1):
     '''Returns a boolean column indicating whether the provided data was selected or not
     '''
+    LOGGER.debug("in selected data alternate, daterange_type: {}".format(daterange_type))
     if DATERANGE_TYPES[daterange_type] == 'Select Week':
         date_filter = data['week_number'] == date_range_id
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         date_filter = data['month_number'] == date_range_id
     return date_filter
 
-def filter_table_data(period, day_type, orientation='ns', daterange_type=0, date_range_id=1):
+def filter_table_data(period, day_type, orientation='ns', daterange_type=0, date_range_id=1, main_steet_id=None):
     '''Return data aggregated and filtered by period
     '''
 
@@ -340,18 +321,20 @@ def filter_table_data(period, day_type, orientation='ns', daterange_type=0, date
 
     else: 
         # weekly data - alternate route data
-        date_filter = selected_data(ALTERNATE_DATA, daterange_type, date_range_id)
+        date_filter = selected_data_alternate(ALTERNATE_DATA, daterange_type, date_range_id)
         #current data
         filtered = ALTERNATE_DATA[(ALTERNATE_DATA['period'] == period) &
                         (ALTERNATE_DATA['day_type'] == day_type) &
                         (ALTERNATE_DATA['direction'].isin(DIRECTIONS[orientation])) &
                         (ALTERNATE_DATA['category'] != 'Excluded') &
+                        (ALTERNATE_DATA['main_street'] == DROPDOWN_MAIN_STREETS[orientation][main_steet_id]) &
                         (date_filter)]
         pivoted = pivot_order(filtered, orientation, daterange_type)
 
         #baseline data
         filtered_base = ALTERNATE_BASELINE[(ALTERNATE_BASELINE['period'] == period) &
                                 (ALTERNATE_BASELINE['day_type'] == day_type) &
+                                (ALTERNATE_BASELINE['main_street'] == DROPDOWN_MAIN_STREETS[orientation][main_steet_id]) &
                                 (ALTERNATE_BASELINE['direction'].isin(DIRECTIONS[orientation]))]
         pivoted_baseline = pivot_order(filtered_base, orientation)
 
@@ -616,7 +599,7 @@ def generate_row(df_row, baseline_row, row_state, orientation='ns'):
                    className=generate_row_class(row_state['clicked']),
                    n_clicks=row_state['n_clicks'])
 
-def generate_table(state, day_type, period, orientation='ns', daterange_type=0, date_range_id=1):
+def generate_table(state, day_type, period, orientation='ns', daterange_type=0, date_range_id=1, main_steet_id=0):
     """Generate HTML table of streets and before-after values
 
         :param state:
@@ -637,8 +620,9 @@ def generate_table(state, day_type, period, orientation='ns', daterange_type=0, 
                  + ', day_type: ' + str(day_type) 
                  + ', date_range_id: ' + str(date_range_id) 
                  + ', orientation: ' + str(orientation) 
-                 + ', state: ' + str(state))
-    filtered_data, baseline = filter_table_data(period, day_type, orientation, daterange_type, date_range_id)
+                 + ', state: ' + str(state)
+                 + ', main_street_id ' + str(main_steet_id))
+    filtered_data, baseline = filter_table_data(period, day_type, orientation, daterange_type, date_range_id, main_steet_id)
     #Current date for the data, to replace "After" header
     if DATERANGE_TYPES[daterange_type] in ['Last Day', 'Select Date']:
         day = filtered_data['date'].iloc[0].strftime('%a %b %d')
@@ -847,7 +831,9 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
                ], id=LAYOUTS['streets'])
 
 
-STREETS_LAYOUT_ALTERNATE = html.Div(children=[html.Div(children=[
+
+
+STREETS_LAYOUT_ALTERNATE_NS = html.Div(children=[html.Div(children=[
     html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),
     html.Button(id=CONTROLS['toggle'], children='Show Filters'),
     html.Div(id=CONTROLS['div_id'],
@@ -862,6 +848,13 @@ STREETS_LAYOUT_ALTERNATE = html.Div(children=[html.Div(children=[
                                       value=TIMEPERIODS.iloc[0]['day_type'],
                                       className='radio-toolbar'),
                        html.Span(children=[
+                        html.Span(dcc.Dropdown(id=CONTROLS['main_street'],
+                           options=[{'label': label,
+                                              'value': value}
+                                             for value, label in enumerate(DROPDOWN_MAIN_STREETS['alternate'])],
+                                             value=0,
+                                             clearable=False),
+                                             title='Select a street to filter table data'),
                            html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
                                     options=[{'label': 'Select Week',
                                               'value': 2}, 
@@ -904,6 +897,77 @@ STREETS_LAYOUT_ALTERNATE = html.Div(children=[html.Div(children=[
     html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1]), className='eight columns')
                ], id=LAYOUTS['streets'])
 
+
+
+
+
+STREETS_LAYOUT_ALTERNATE_EW = html.Div(children=[html.Div(children=[
+    html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),
+    html.Button(id=CONTROLS['toggle'], children='Show Filters'),
+    html.Div(id=CONTROLS['div_id'],
+             children=[dcc.RadioItems(id=CONTROLS['timeperiods'],
+                                      value=TIMEPERIODS.iloc[0]['period'],
+                                      className='radio-toolbar'),
+                       dcc.RadioItems(id=CONTROLS['day_types'],
+                                      options=[{'label': day_type,
+                                                'value': day_type,
+                                                'id': day_type}
+                                               for day_type in TIMEPERIODS['day_type'].unique()],
+                                      value=TIMEPERIODS.iloc[0]['day_type'],
+                                      className='radio-toolbar'),
+                       html.Span(children=[
+                            html.Span(dcc.Dropdown(id=CONTROLS['main_street'],
+                                options=[{'label': label,
+                                              'value': value}
+                                             for value, label in enumerate(DROPDOWN_MAIN_STREETS['alternate'])],
+                                             value=0,
+                                             clearable=False),
+                                             title='Select a street to filter table data'),
+                           html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
+                                    options=[{'label': 'Select Week',
+                                              'value': 2}, 
+                                              {'label': 'Select Month',
+                                              'value': 3
+                                              }],
+                                    value=2,
+                                    clearable=False),
+                                    title='Select a date range type to filter table data'),
+                           html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
+                                                  options=generate_date_ranges(daterange_type=3),
+                                                  value = 1,
+                                                  clearable=False),
+                                     id=CONTROLS['date_range_span'],
+                                     style={'display':'none'}),
+                           html.Span(dcc.DatePickerSingle(id=CONTROLS['date_picker'],
+                                                          clearable=False,
+                                                          min_date_allowed=DATERANGE[0],
+                                                          max_date_allowed=DATERANGE[1],
+                                                          date=DATERANGE[1],
+                                                          display_format='MMM DD',
+                                                          month_format='MMM',
+                                                          show_outside_days=True),
+                                     id=CONTROLS['date_picker_span'],
+                                     style={'display':'none'})
+                                     ])],
+             style={'display':'none'}),
+    html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ns'], 'Weekday', 'AM Peak')),
+    html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),
+              ' 1+ min', html.B(' longer'), ' than baseline']),
+    html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),
+              ' 1+ min', html.B(' shorter'), ' than baseline']),
+    ],
+                           className='four columns'),
+    html.H2(id=STREETNAME_DIV[0], children=[html.B('Dundas Eastbound:'),
+                                                ' Bathurst - Jarvis']),
+    html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0]), className='eight columns'),
+    html.H2(id=STREETNAME_DIV[1], children=[html.B('Dundas Westbound:'),
+                                                ' Jarvis - Bathurst']),
+    html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1]), className='eight columns')
+               ], id=LAYOUTS['streets'])
+
+
+
+
 app.layout = html.Div([
                        html.Div(children=[html.H1(children=TITLE, id='title')],
                                 className='row twelve columns'),
@@ -942,8 +1006,10 @@ app.layout = html.Div([
 def render_content(tab):
     if tab == 'ns':
         return STREETS_LAYOUT
-    else: 
-        return STREETS_LAYOUT_ALTERNATE
+    elif tab == 'alternate': 
+        return STREETS_LAYOUT_ALTERNATE_NS
+    else:
+        return STREETS_LAYOUT_ALTERNATE_EW
 	
 
 @app.callback(Output(LAYOUTS['streets'], 'style'),
@@ -1033,9 +1099,10 @@ def update_day_type(date_picked, daterange_type, day_type):
                Input(CONTROLS['date_range_type'], 'value'),
                Input(CONTROLS['date_range'], 'value'),
                Input(CONTROLS['date_picker'], 'date'),
-               Input('tabs', 'value')],
+               Input('tabs', 'value'), 
+               ],
               [State(div_id, 'children') for div_id in STATE_DIV_IDS.values()])
-def update_table(period, day_type, daterange_type, date_range_id, date_picked=datetime.today().date(), orientation='ns',  *state_data):
+def update_table(period, day_type, daterange_type, date_range_id, date_picked=datetime.today().date(), orientation='ns', *state_data):
     '''Generate HTML table of before-after travel times based on selected
     day type, time period, and remember which row was previously selected
     '''
@@ -1067,20 +1134,21 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
         # routes that only have weekly data
         state_index = list(STREETS.keys()).index(orientation)
         state_data_dict = deserialise_state(state_data[state_index])
-        if daterange_type in [2, 3]:
-            LOGGER.debug('Update table: daterange_type:' + str(daterange_type) 
+        LOGGER.debug('Update table: daterange_type:' + str(daterange_type) 
                         + ', period ' + str(period)
                         + ', day_type ' + str(day_type) 
                         + ', date_range_id ' + str(date_range_id) 
-                        + ', orientation  ' + str(orientation))
+                        + ', orientation  ' + str(orientation)
+                        #+ ', main street value/index' + str(main_street)
+                        )
              
-            table = generate_table(state_data_dict, day_type, period,
+        table = generate_table(state_data_dict, day_type, period,
                                 orientation=orientation,
                                 daterange_type=daterange_type,
-                                date_range_id=date_range_id)
-            LOGGER.debug('Table returned for Week')
-            return table
-        return
+                                date_range_id=date_range_id,
+                                main_steet_id=0)
+        LOGGER.debug('Table returned for Week')
+        return table
 
 
 @app.callback(Output(CONTROLS['date_range_span'], 'style'),
