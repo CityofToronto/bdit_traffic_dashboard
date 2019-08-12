@@ -191,7 +191,6 @@ PLOT_COLORS = dict(pilot='rgb(102,1,89)',
 FONT_FAMILY = '"Libre Franklin", sans-serif'
 
 # IDs for divs
-STATE_DIV_IDS = OrderedDict([(orientation, 'clicks-storage' + orientation) for orientation in STREETS])
 MAIN_DIV = 'main-page'
 STREETNAME_DIV = ['street-name-'+str(i) for i in [0, 1]]
 SELECTED_STREET_DIVS = OrderedDict([(orientation, 'selected-street' + orientation) for orientation in STREETS])
@@ -208,10 +207,10 @@ CONTROLS = dict(div_id='controls-div',
                 date_picker_span='date-picker-span', 
                 main_street='main-streets')
 DATERANGE_TYPES = ['Last Day', 'Select Date', 'Select Week', 'Select Month']
-GRAPHS = ['dvp_graph', 'alternate_graph', 'alternate_graph_ew']
-GRAPHDIVS = ['dvp_div', 'alternate_graph_div', 'alternate_graph_div_ew']
+GRAPHS = ['nb_eb_graph', 'sb_wb_graph']
+GRAPHDIVS = ['nb_sb_graph_div', 'sb_wb_graph_div']
 
-LAYOUTS = dict(streets='streets-div')
+LAYOUTS = dict(streets='streets-div', alternate_ns='alternate-ns', alternate_ew='alternate-ew')
 
 INITIAL_STATE = {orientation:OrderedDict([(street,
                                            dict(n_clicks=(1 if i == 0 else 0),
@@ -297,7 +296,7 @@ def selected_data_alternate(data, daterange_type=2, date_range_id=1):
         date_filter = data['month_number'] == date_range_id
     return date_filter
 
-def filter_table_data(period, day_type, orientation='ns', daterange_type=0, date_range_id=1, main_steet_id=None):
+def filter_table_data(period, day_type, orientation='ns', daterange_type=0, date_range_id=1, main_street_id=None):
     '''Return data aggregated and filtered by period
     '''
 
@@ -327,14 +326,14 @@ def filter_table_data(period, day_type, orientation='ns', daterange_type=0, date
                         (ALTERNATE_DATA['day_type'] == day_type) &
                         (ALTERNATE_DATA['direction'].isin(DIRECTIONS[orientation])) &
                         (ALTERNATE_DATA['category'] != 'Excluded') &
-                        (ALTERNATE_DATA['main_street'] == DROPDOWN_MAIN_STREETS[orientation][main_steet_id]) &
+                        (ALTERNATE_DATA['main_street'] == DROPDOWN_MAIN_STREETS[orientation][main_street_id]) &
                         (date_filter)]
         pivoted = pivot_order(filtered, orientation, daterange_type)
 
         #baseline data
         filtered_base = ALTERNATE_BASELINE[(ALTERNATE_BASELINE['period'] == period) &
                                 (ALTERNATE_BASELINE['day_type'] == day_type) &
-                                (ALTERNATE_BASELINE['main_street'] == DROPDOWN_MAIN_STREETS[orientation][main_steet_id]) &
+                                (ALTERNATE_BASELINE['main_street'] == DROPDOWN_MAIN_STREETS[orientation][main_street_id]) &
                                 (ALTERNATE_BASELINE['direction'].isin(DIRECTIONS[orientation]))]
         pivoted_baseline = pivot_order(filtered_base, orientation)
 
@@ -572,15 +571,15 @@ def after_cell_class(before, after):
     else:
         return 'same'
 
-def generate_row(df_row, baseline_row, row_state, orientation='ns'):
+def generate_row(df_row, baseline_row, selected, orientation='ns'):
     """Create an HTML row from a database row (each street)
 
         :param df_row:
             Daily data dataframe row
         :param baseline_row:
             Baseline row for that street
-        :param row_state:
-            Current state of that row: number of clicks, whether it is currently clicked
+        :param selected:
+            Whether this street is currently clicked
     """
 
     data_cells = []
@@ -596,14 +595,13 @@ def generate_row(df_row, baseline_row, row_state, orientation='ns'):
     return html.Tr([html.Td(df_row['street'], className='segname'), 
                 *data_cells],
                    id=df_row['street'],
-                   className=generate_row_class(row_state['clicked']),
-                   n_clicks=row_state['n_clicks'])
+                   className=generate_row_class(selected))
 
-def generate_table(state, day_type, period, orientation='ns', daterange_type=0, date_range_id=1, main_steet_id=0):
+def generate_table(selected_street, day_type, period, orientation='ns', daterange_type=0, date_range_id=1, main_street_id=0):
     """Generate HTML table of streets and before-after values
 
-        :param state:
-            Dictionary of table's state: {street: (n_clicks, clicked)}
+        :param selected_street:
+            The street in the table that is selected
         :param day_type:
             Type of day
         :param period:
@@ -615,14 +613,19 @@ def generate_table(state, day_type, period, orientation='ns', daterange_type=0, 
         :param daterange:
             
     """
+    
+    if daterange_type < 2 and orientation in ['alternate', 'alternate_ew']:
+        daterange_type = 2
+        date_range_id = 1
+
     LOGGER.debug('Generate table: daterange_type:' + str(daterange_type) 
                  + ', period: ' + str(period)
                  + ', day_type: ' + str(day_type) 
                  + ', date_range_id: ' + str(date_range_id) 
                  + ', orientation: ' + str(orientation) 
-                 + ', state: ' + str(state)
-                 + ', main_street_id ' + str(main_steet_id))
-    filtered_data, baseline = filter_table_data(period, day_type, orientation, daterange_type, date_range_id, main_steet_id)
+                 + ', selected_street: ' + str(selected_street)
+                 + ', main_street_id ' + str(main_street_id))
+    filtered_data, baseline = filter_table_data(period, day_type, orientation, daterange_type, date_range_id, main_street_id)
     #Current date for the data, to replace "After" header
     if DATERANGE_TYPES[daterange_type] in ['Last Day', 'Select Date']:
         day = filtered_data['date'].iloc[0].strftime('%a %b %d')
@@ -633,7 +636,7 @@ def generate_table(state, day_type, period, orientation='ns', daterange_type=0, 
 
     rows = []
     for baseline_row, street in zip(baseline.iterrows(), baseline['street'].values):
-    # Generate a row for each street, keeping in mind the state (which row is clicked)
+    # Generate a row for each street, keeping in mind the selected_street (which row is clicked)
         try:
             pilot_data = filtered_data[filtered_data['street']==street].iloc[0]
         except IndexError:
@@ -642,7 +645,7 @@ def generate_table(state, day_type, period, orientation='ns', daterange_type=0, 
             pilot_data['street'] = street
         row = generate_row(pilot_data,
                            baseline_row[1], 
-                           state[street],
+                           selected_street == street,
                            orientation)
         rows.append(row) 
 
@@ -779,7 +782,8 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
     html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),
     html.Button(id=CONTROLS['toggle'], children='Show Filters'),
     html.Div(id=CONTROLS['div_id'],
-             children=[dcc.RadioItems(id=CONTROLS['timeperiods'],
+             children=[
+                 dcc.RadioItems(id=CONTROLS['timeperiods'],
                                       value=TIMEPERIODS.iloc[0]['period'],
                                       className='radio-toolbar'),
                        dcc.RadioItems(id=CONTROLS['day_types'],
@@ -790,6 +794,7 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
                                       value=TIMEPERIODS.iloc[0]['day_type'],
                                       className='radio-toolbar'),
                        html.Span(children=[
+                           html.Span(dcc.Dropdown(id=CONTROLS['main_street'], value=0), style={'display':'none'}),
                            html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
                                     options=[{'label': label,
                                               'value': value}
@@ -865,7 +870,7 @@ STREETS_LAYOUT_ALTERNATE_NS = html.Div(children=[html.Div(children=[
                                     clearable=False),
                                     title='Select a date range type to filter table data'),
                            html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
-                                                  options=generate_date_ranges(daterange_type=3),
+                                                  options=generate_date_ranges(daterange_type=2),
                                                   value = 1,
                                                   clearable=False),
                                      id=CONTROLS['date_range_span'],
@@ -882,7 +887,7 @@ STREETS_LAYOUT_ALTERNATE_NS = html.Div(children=[html.Div(children=[
                                      style={'display':'none'})
                                      ])],
              style={'display':'none'}),
-    html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ns'], 'Weekday', 'AM Peak')),
+    html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['alternate'], 'Weekday', 'AM Peak', orientation='alternate',daterange_type=2)),
     html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),
               ' 1+ min', html.B(' longer'), ' than baseline']),
     html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),
@@ -895,8 +900,7 @@ STREETS_LAYOUT_ALTERNATE_NS = html.Div(children=[html.Div(children=[
     html.H2(id=STREETNAME_DIV[1], children=[html.B('Dundas Westbound:'),
                                                 ' Jarvis - Bathurst']),
     html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1]), className='eight columns')
-               ], id=LAYOUTS['streets'])
-
+               ], id=LAYOUTS['alternate_ns'])
 
 
 
@@ -919,7 +923,7 @@ STREETS_LAYOUT_ALTERNATE_EW = html.Div(children=[html.Div(children=[
                             html.Span(dcc.Dropdown(id=CONTROLS['main_street'],
                                 options=[{'label': label,
                                               'value': value}
-                                             for value, label in enumerate(DROPDOWN_MAIN_STREETS['alternate'])],
+                                             for value, label in enumerate(DROPDOWN_MAIN_STREETS['alternate_ew'])],
                                              value=0,
                                              clearable=False),
                                              title='Select a street to filter table data'),
@@ -933,7 +937,7 @@ STREETS_LAYOUT_ALTERNATE_EW = html.Div(children=[html.Div(children=[
                                     clearable=False),
                                     title='Select a date range type to filter table data'),
                            html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
-                                                  options=generate_date_ranges(daterange_type=3),
+                                                  options=generate_date_ranges(daterange_type=2),
                                                   value = 1,
                                                   clearable=False),
                                      id=CONTROLS['date_range_span'],
@@ -950,7 +954,7 @@ STREETS_LAYOUT_ALTERNATE_EW = html.Div(children=[html.Div(children=[
                                      style={'display':'none'})
                                      ])],
              style={'display':'none'}),
-    html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ns'], 'Weekday', 'AM Peak')),
+    html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['alternate_ew'], 'Weekday', 'AM Peak', orientation='alternate_ew',daterange_type=2)),
     html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),
               ' 1+ min', html.B(' longer'), ' than baseline']),
     html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),
@@ -963,7 +967,7 @@ STREETS_LAYOUT_ALTERNATE_EW = html.Div(children=[html.Div(children=[
     html.H2(id=STREETNAME_DIV[1], children=[html.B('Dundas Westbound:'),
                                                 ' Jarvis - Bathurst']),
     html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1]), className='eight columns')
-               ], id=LAYOUTS['streets'])
+               ], id=LAYOUTS['alternate_ew'])
 
 
 
@@ -983,10 +987,6 @@ app.layout = html.Div([
                                                          style={'text-align':'right',
                                                                 'padding-right':'1em'}),
                                 className='row'),
-                       *[html.Div(id=STATE_DIV_IDS[orientation],
-                                  style={'display': 'none'},
-                                  children=serialise_state(state))
-                         for orientation, state in INITIAL_STATE.items()],
                        *[html.Div(id=div_id,
                                   style={'display': 'none'},
                                   children=[STREETS[orientation][0]])
@@ -1000,10 +1000,22 @@ app.layout = html.Div([
 #                                                                                                 #
 ###################################################################################################
 
+'''
+@app.callback(Output('date_range_type', 'value'), 
+            [Input('tabs', 'value')],
+            [State(CONTROLS['date_range_type'], 'value')]
+            )
+def update_date_range_type(tab, daterange_type):
+    if tab in ['alternate', 'alternate_ew'] and daterange_type < 2:
+        return 2
+    else:
+        return daterange_type
+'''
 
 @app.callback(Output(MAIN_DIV, 'children'),
               [Input('tabs', 'value')])
 def render_content(tab):
+    '''Change layout when you switch tabs'''
     if tab == 'ns':
         return STREETS_LAYOUT
     elif tab == 'alternate': 
@@ -1016,9 +1028,8 @@ def render_content(tab):
               [Input('tabs', 'value')])
 def display_streets(value):
     '''Switch tabs display while retaining frontend client-side'''
-    if value in ['alternate', 'alternate_ew']:
-        return {'display':'inline'}
-    elif value == 'ns':
+    # if value in ['alternate', 'alternate_ew', 'ns']:
+    if value in ['ns']:
         return {'display':'inline'}
     else:
         return {'display':'none'}
@@ -1098,11 +1109,12 @@ def update_day_type(date_picked, daterange_type, day_type):
                Input(CONTROLS['day_types'], 'value'),
                Input(CONTROLS['date_range_type'], 'value'),
                Input(CONTROLS['date_range'], 'value'),
+               Input(CONTROLS['main_street'], 'value'),
                Input(CONTROLS['date_picker'], 'date'),
-               Input('tabs', 'value'), 
+               Input('tabs', 'value')
                ],
-              [State(div_id, 'children') for div_id in STATE_DIV_IDS.values()])
-def update_table(period, day_type, daterange_type, date_range_id, date_picked=datetime.today().date(), orientation='ns', *state_data):
+              [State(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()])
+def update_table(period, day_type, daterange_type, date_range_id, main_street_id=0, date_picked=datetime.today().date(), orientation='ns', *state_data):
     '''Generate HTML table of before-after travel times based on selected
     day type, time period, and remember which row was previously selected
     '''
@@ -1115,9 +1127,9 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
         if daterange_type == 1:
             date_range_id = datetime.strptime(date_picked, '%Y-%m-%d').date()
         state_index = list(STREETS.keys()).index(orientation)
-        state_data_dict = deserialise_state(state_data[state_index])
+        selected_street = deserialise_state(state_data[state_index])
 
-        table = generate_table(state_data_dict, day_type, period,
+        table = generate_table(selected_street, day_type, period,
                             orientation=orientation,
                             daterange_type=daterange_type,
                             date_range_id=date_range_id)
@@ -1131,22 +1143,29 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
             LOGGER.debug('Table returned for Month')
         return table
     else:
+        
+        if daterange_type < 2: 
+            daterange_type = 2
+            date_range_id = 1
+            
+
         # routes that only have weekly data
         state_index = list(STREETS.keys()).index(orientation)
-        state_data_dict = deserialise_state(state_data[state_index])
+        selected_street = deserialise_state(state_data[state_index])
         LOGGER.debug('Update table: daterange_type:' + str(daterange_type) 
                         + ', period ' + str(period)
                         + ', day_type ' + str(day_type) 
+                        + ', daterange_type ' + str(daterange_type)
                         + ', date_range_id ' + str(date_range_id) 
                         + ', orientation  ' + str(orientation)
-                        #+ ', main street value/index' + str(main_street)
+                        + ', main street value/index' + str(main_street_id)
                         )
              
-        table = generate_table(state_data_dict, day_type, period,
+        table = generate_table(selected_street, day_type, period,
                                 orientation=orientation,
                                 daterange_type=daterange_type,
                                 date_range_id=date_range_id,
-                                main_steet_id=0)
+                                main_street_id=main_street_id)
         LOGGER.debug('Table returned for Week')
         return table
 
@@ -1215,54 +1234,28 @@ def create_row_update_function(streetname, orientation):
 
 
 def create_row_click_function(orientation):
-    @app.callback(Output(STATE_DIV_IDS[orientation], 'children'),
-                  [Input(street, 'n_clicks') for street in STREETS[orientation]],
-                  [State(STATE_DIV_IDS[orientation], 'children'),
-                   State(SELECTED_STREET_DIVS[orientation], 'children')])
+    @app.callback(Output(SELECTED_STREET_DIVS[orientation], 'children'),
+                  [Input(street,'n_clicks') for street in STREETS[orientation]]
+                  )
     def row_click(*args):
         '''Detect which row was clicked and update the graphs to be for the selected street
 
-        Clicks are detected by comparing the previous number of clicks for each row with
-        the current state. Previous state is stored in a json in a hidden div
+        Clicks are detected by comparing the previous number of clicks for that street with
+        the previous state of that street. Previous state is stored in a json in a hidden 
+        div for each street. This function is triggered by any click on any street in that
+        tab (orientation) but we only check the street for this function.
         '''
-        rows, old_clicks, prev_clicked_street = args[:-2], args[-2], args[-1]
 
-        clicks = deserialise_state(old_clicks)
-        click_updated = False
-        for (street, click_obj), n_click_new in zip(clicks.items(), rows):
-            if n_click_new > click_obj['n_clicks']:
-                click_obj['clicked'] = True
-                click_obj['n_clicks'] = n_click_new
-                click_updated = True
-                LOGGER.debug(street + ' clicked')
-            else:
-                click_obj['clicked'] = False
-        #If no street was found to be clicked by this function, revert to previously clicked street.
-        if not click_updated:
-            clicks[prev_clicked_street[0]]['clicked'] = True
+        ctx = dash.callback_context
+        selected_street = ctx.triggered[0]['prop_id'].split('.')[0]
         
-        return serialise_state(clicks)
+        LOGGER.debug('This street was clicked: %s', selected_street)
+        
+        return serialise_state(selected_street)
     row_click.__name__ = 'row_click_'+orientation
     return row_click
 
-[create_row_click_function(key) for key in INITIAL_STATE.keys()]
-
-
-def create_update_selected_street(orientation):
-    @app.callback(Output(SELECTED_STREET_DIVS[orientation], 'children'),
-                  [Input(STATE_DIV_IDS[orientation], 'children')])
-    def update_selected_street(state_data):
-        '''Store selected street in a hidden div based on current state as
-        stored in its own hidden div
-        '''
-        state_data_dict = deserialise_state(state_data)
-        street = [street for street, click_obj in state_data_dict.items() if click_obj['clicked']]
-        LOGGER.debug('Updating %s with selected street: %s', SELECTED_STREET_DIVS[orientation], street)
-        return street
-    update_selected_street.__name__ = 'update_selected_street_'+orientation
-    return update_selected_street
-
-[create_update_selected_street(orientation) for orientation in SELECTED_STREET_DIVS]
+[create_row_click_function(orientation) for orientation in STREETS.keys()]
 
 def create_update_street_name(dir_id):
     @app.callback(Output(STREETNAME_DIV[dir_id], 'children'),
@@ -1303,23 +1296,29 @@ def create_update_graph_div(graph_number):
         '''
         *selected_streets, daterange_type, date_range, date_picked = args
         #Use the input for the selected street from the orientation of the current tab
+
+        if daterange_type < 2 and orientation in ['alternate', 'alternate_ew']:
+            daterange_type = 2
+            date_range_id = 1
+
         if daterange_type == 1:
             date_range = datetime.strptime(date_picked, '%Y-%m-%d').date()
+
         street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
         LOGGER.debug('Updating graph %s, for street: %s, period: %s, day_type: %s, daterange_type: %s, date_range: %s',
-                     GRAPHS[graph_number], street, period, day_type, daterange_type, date_range)
+                        GRAPHS[graph_number], street, period, day_type, daterange_type, date_range)
         figure = generate_figure(street[0],
-                                 DIRECTIONS[orientation][graph_number],
-                                 orientation,
-                                 period=period,
-                                 day_type=day_type,
-                                 daterange_type=daterange_type,
-                                 date_range_id=date_range, 
-                                 )
+                                    DIRECTIONS[orientation][graph_number],
+                                    orientation,
+                                    period=period,
+                                    day_type=day_type,
+                                    daterange_type=daterange_type,
+                                    date_range_id=date_range, 
+                                    )
         if figure: 
             return html.Div(dcc.Graph(id = GRAPHS[graph_number],
-                                      figure = figure,
-                                      config={'displayModeBar': False}))
+                                        figure = figure,
+                                        config={'displayModeBar': False}))
         else:
             return html.Div(className = 'nodata')
 
