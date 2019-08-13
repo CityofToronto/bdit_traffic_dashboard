@@ -1303,7 +1303,7 @@ def create_update_graph_div(graph_number):
         street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
         LOGGER.debug('Updating graph %s, for street: %s, period: %s, day_type: %s, daterange_type: %s, date_range: %s',
                         GRAPHS[graph_number], street, period, day_type, daterange_type, date_range)
-        figure = generate_figure(street[0],
+        figure = generate_figure(street,
                                     DIRECTIONS[orientation][graph_number],
                                     orientation,
                                     period=period,
