@@ -212,11 +212,7 @@ GRAPHDIVS = ['nb_sb_graph_div', 'sb_wb_graph_div']
 
 LAYOUTS = dict(streets='streets-div', alternate_ns='alternate-ns', alternate_ew='alternate-ew')
 
-INITIAL_STATE = {orientation:OrderedDict([(street,
-                                           dict(n_clicks=(1 if i == 0 else 0),
-                                                clicked=(i == 0)
-                                               )) for i, street in enumerate(STREETS[orientation])])
-                 for orientation in STREETS}
+INITIAL_STATE = {orientation:STREETS[orientation][0] for orientation in STREETS}
 
 ###################################################################################################
 #                                                                                                 #
@@ -645,7 +641,7 @@ def generate_table(selected_street, day_type, period, orientation='ns', daterang
             pilot_data['street'] = street
         row = generate_row(pilot_data,
                            baseline_row[1], 
-                           selected_street == street,
+                           selected_street == str(street),
                            orientation)
         rows.append(row) 
 
@@ -1127,7 +1123,7 @@ def update_table(period, day_type, daterange_type, date_range_id, main_street_id
         if daterange_type == 1:
             date_range_id = datetime.strptime(date_picked, '%Y-%m-%d').date()
         state_index = list(STREETS.keys()).index(orientation)
-        selected_street = deserialise_state(state_data[state_index])
+        selected_street = state_data[state_index]
 
         table = generate_table(selected_street, day_type, period,
                             orientation=orientation,
@@ -1151,7 +1147,7 @@ def update_table(period, day_type, daterange_type, date_range_id, main_street_id
 
         # routes that only have weekly data
         state_index = list(STREETS.keys()).index(orientation)
-        selected_street = deserialise_state(state_data[state_index])
+        selected_street = state_data[state_index]
         LOGGER.debug('Update table: daterange_type:' + str(daterange_type) 
                         + ', period ' + str(period)
                         + ', day_type ' + str(day_type) 
@@ -1224,7 +1220,7 @@ def create_row_update_function(streetname, orientation):
         '''Inner function to update row with id=streetname
         '''
         if street:
-            return generate_row_class(streetname == street[0])
+            return generate_row_class(streetname == street)
         else:
             return generate_row_class(False)
     update_clicked_row.__name__ = 'update_row_'+streetname+'_'+orientation
@@ -1251,7 +1247,7 @@ def create_row_click_function(orientation):
         
         LOGGER.debug('This street was clicked: %s', selected_street)
         
-        return serialise_state(selected_street)
+        return selected_street
     row_click.__name__ = 'row_click_'+orientation
     return row_click
 
