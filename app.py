@@ -127,9 +127,9 @@ app.config['suppress_callback_exceptions'] = True
 app.title=TITLE
 server = app.server
 
-app.config.update({
-        'requests_pathname_prefix': '/dvp-dashboard/',
-})
+# app.config.update({
+#         'requests_pathname_prefix': '/dvp-dashboard/',
+# })
 
 server.secret_key = os.environ.get('SECRET_KEY', 'my-secret-key')
 
@@ -491,8 +491,7 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
                                       className='radio-toolbar'),
                        dcc.RadioItems(id=CONTROLS['day_types'],
                                       options=[{'label': day_type,
-                                                'value': day_type,
-                                                'id': day_type}
+                                                'value': day_type}
                                                for day_type in TIMEPERIODS['day_type'].unique()],
                                       value=TIMEPERIODS.iloc[0]['day_type'],
                                       className='radio-toolbar'),
@@ -543,11 +542,13 @@ app.layout = html.Div([#html.Link(rel='stylesheet',
                        #          href='/css/style.css'),
                        html.Div(children=[html.H1(children=TITLE, id='title')],
                                 className='row twelve columns'),
-                       dcc.Tabs(children=[dcc.Tab(label='East-West Streets', value='ew'),
+                       html.Div(dcc.Tabs(children=[dcc.Tab(label='East-West Streets', value='ew'),
                                       dcc.Tab(label='North-South Streets', value='ns')],
                                 value='ew',
                                 id='tabs',
-                                style={'font-weight':'bold'}),
+                                style={'font-weight':'bold'})
+                                ,
+                                className='row twelve columns'),
                        html.Div(id=MAIN_DIV, className='row', children=[STREETS_LAYOUT]),
                        html.Div(children=html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
