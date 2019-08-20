@@ -34,23 +34,17 @@ else:
     con = connect(**dbset)
 
 DATA = pandasql.read_sql('''
-                         SELECT street, direction, dt AS date, day_type, category, period, round(tt,1) tt, 
-                         CASE WHEN dt = first_value(dt) OVER (PARTITION BY direction, day_type, period ORDER BY dt DESC)
-                         THEN 1 ELSE 0 END AS most_recent,
-                         week_number, month_number 
-                         FROM king_pilot.dash_daily
-                         LEFT OUTER JOIN king_pilot.pilot_weeks weeks ON dt >= week AND dt < week + INTERVAL '1 week'
-                         LEFT OUTER JOIN king_pilot.pilot_months months ON dt >= month AND dt < month + INTERVAL '1 month'
+                         SELECT * from data_analysis.richmond_dash_daily
                          ''', con)
 BASELINE = pandasql.read_sql('''SELECT street, direction, from_intersection, to_intersection, 
-                             day_type, period, period_range, round(tt,1) tt 
-                             FROM king_pilot.dash_baseline ''',
+                             day_type, period, period_range, tt
+                             FROM data_analysis.richmond_dash_baseline''',
                              con)
 
 # Numbering Weeks and Months for Dropdown Selectors
-WEEKS = pandasql.read_sql('''SELECT * FROM king_pilot.pilot_weeks 
+WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_weeks 
                          ''', con)
-MONTHS = pandasql.read_sql('''SELECT * FROM king_pilot.pilot_months
+MONTHS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_months
                          ''', con, parse_dates=['month'])
 WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week'].astype(str)
 WEEKS.sort_values(by='week_number', inplace=True)
@@ -66,14 +60,14 @@ con.close()
 #                                                                                                 #
 ###################################################################################################
 
-TITLE = 'King Street Transit Pilot: Vehicular Travel Time Monitoring'
+TITLE = 'Richmond Watermain Closure - Travel Time Impact'
 
 # Data management constants
 
 # Hard coded ordering of street names for displaying in the data table for each 
 # tab by the "orientation" of those streets. E.g. 'ew' for East-West
-STREETS = OrderedDict(ew=['Dundas', 'Queen', 'Richmond', 'Adelaide', 'Wellington', 'Front'],
-                      ns=['Bathurst', 'Spadina', 'University', 'Yonge', 'Jarvis'])
+STREETS = OrderedDict(ew=['Dundas', 'Queen', 'Richmond', 'Adelaide', 'King', 'Wellington', 'Front'],
+                      ns=['Bathurst', 'Spadina', 'University'])
 # Directions assigned to each tab
 DIRECTIONS = OrderedDict(ew=['Eastbound', 'Westbound'],
                          ns=['Northbound', 'Southbound'])
