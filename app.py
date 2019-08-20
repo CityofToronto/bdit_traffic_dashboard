@@ -46,6 +46,8 @@ BASELINE = pandasql.read_sql('''SELECT street, direction, from_intersection, to_
                              day_type, period, period_range, round(tt,1) tt 
                              FROM king_pilot.dash_baseline ''',
                              con)
+
+# Numbering Weeks and Months for Dropdown Selectors
 WEEKS = pandasql.read_sql('''SELECT * FROM king_pilot.pilot_weeks 
                          ''', con)
 MONTHS = pandasql.read_sql('''SELECT * FROM king_pilot.pilot_months
@@ -53,6 +55,8 @@ MONTHS = pandasql.read_sql('''SELECT * FROM king_pilot.pilot_months
 WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week'].astype(str)
 WEEKS.sort_values(by='week_number', inplace=True)
 MONTHS['label'] = 'Month ' + MONTHS['month_number'].astype(str) + ': ' + MONTHS['month'].dt.strftime("%b '%y")
+
+#Range types: Latest Day, Select Date, WEEKS, MONTHS
 RANGES = [pd.DataFrame(), pd.DataFrame(), WEEKS, MONTHS]
 con.close()
 
@@ -62,22 +66,32 @@ con.close()
 #                                                                                                 #
 ###################################################################################################
 
+TITLE = 'King Street Transit Pilot: Vehicular Travel Time Monitoring'
+
 # Data management constants
 
+# Hard coded ordering of street names for displaying in the data table for each 
+# tab by the "orientation" of those streets. E.g. 'ew' for East-West
 STREETS = OrderedDict(ew=['Dundas', 'Queen', 'Richmond', 'Adelaide', 'Wellington', 'Front'],
                       ns=['Bathurst', 'Spadina', 'University', 'Yonge', 'Jarvis'])
+# Directions assigned to each tab
 DIRECTIONS = OrderedDict(ew=['Eastbound', 'Westbound'],
                          ns=['Northbound', 'Southbound'])
+
 DATERANGE = [DATA['date'].min(), DATA['date'].max()]
-TIMEPERIODS = BASELINE[['day_type','period', 'period_range']].drop_duplicates().sort_values(['day_type', 'period_range'])
+
+#Time periods for each day type, derived from the baseline dataframe
+TIMEPERIODS = BASELINE[['day_type','period','period_range']].drop_duplicates().sort_values(['day_type', 'period_range'])
+
+# Threshold for changing the colour of cells in the table based on difference 
+# from the baseline in minutes
 THRESHOLD = 1
 
-#Max travel time to fix y axis of graphs, based on the lowest of the max tt in the data or 20/30 for either graph
+#Max travel time to fix y axis of graphs, based on the lowest of the max tt in the data or 20/30 for either tab
 MAX_TIME = dict(ew=min(30, DATA[DATA['direction'].isin(DIRECTIONS['ew'])].tt.max()),
                 ns=min(20, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
 
 # Plot appearance
-TITLE = 'King Street Transit Pilot: Vehicular Travel Time Monitoring'
 BASELINE_LINE = {'color': 'rgba(128, 128, 128, 0.7)',
                  'width': 4}
 PLOT = dict(margin={'t':10, 'b': 40, 'r': 40, 'l': 40, 'pad': 8})
@@ -87,6 +101,7 @@ PLOT_COLORS = dict(pilot='rgba(22, 87, 136, 100)',
 FONT_FAMILY = '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 # IDs for divs
+# These are defined as variables to make it 
 STATE_DIV_IDS = OrderedDict([(orientation, 'clicks-storage' + orientation) for orientation in STREETS])
 MAIN_DIV = 'main-page'
 STREETNAME_DIV = ['street-name-'+str(i) for i in [0, 1]]
@@ -119,20 +134,27 @@ INITIAL_STATE = {orientation:OrderedDict([(street,
 #                                   App Configuration                                             #
 #                                                                                                 #
 ###################################################################################################
+#Makes the app mobile responsive, so people can load it on their phones/tablets
 metas = [{'name':"viewport",
          'content':"width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"}]
 
 app = dash.Dash(__name__, meta_tags=metas)
+# Necessary because callbacks are registered for objects that aren't displayed 
+# on any given tab
 app.config['suppress_callback_exceptions'] = True
 app.title=TITLE
 server = app.server
 
+# TODO: change this to the path where this will live on the EC2, this also 
+# needs to detect if it's operated in Heroku
 # app.config.update({
 #         'requests_pathname_prefix': '/dvp-dashboard/',
 # })
 
+# Something for heroku
 server.secret_key = os.environ.get('SECRET_KEY', 'my-secret-key')
 
+# Logging format & Setting up logging
 FORMAT = '%(asctime)s %(name)-2s %(levelname)-2s %(message)s'
 logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 
@@ -158,11 +180,13 @@ def serialise_state(clicks_dict):
 def pivot_order(df, orientation = 'ew', date_range_type=1):
     '''Pivot the dataframe around street directions and order by STREETS global var
     '''
-    if DATERANGE_TYPES[date_range_type] in ['Last Day', 'Select Date'] and 'date' in df.columns:
+    if DATERANGE_TYPES[date_range_type] in ['Last Day', 'Select Date'] and     'date' in df.columns:
+        # Don't aggregate by date
         pivoted = df.pivot_table(index=['street', 'date'],
                                  columns='direction',
                                  values='tt').reset_index()
     else:
+        # Do aggregate by date
         pivoted = df.pivot_table(index='street', columns='direction', values='tt').reset_index()
     pivoted.street = pivoted.street.astype("category")
     pivoted.street.cat.set_categories(STREETS[orientation], inplace=True)
@@ -182,7 +206,7 @@ def selected_data(data, daterange_type=0, date_range_id=1):
     return date_filter
 
 def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date_range_id=1):
-    '''Return data aggregated and filtered by period
+    '''Return data aggregated and filtered by period, day type, tab, date range
     '''
 
     date_filter = selected_data(DATA, daterange_type, date_range_id)
@@ -204,6 +228,9 @@ def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date
     return (pivoted, pivoted_baseline)
 
 def graph_bounds_for_date_range(daterange_type, date_range_id):
+    '''Determine bounds for the x-axis of the graphs based on the type of 
+    daterange and the selected date range
+    '''
     if DATERANGE_TYPES[daterange_type] == 'Last Day':
         end_range = DATERANGE[1] + relativedelta(days=1)
         start_range = DATERANGE[1] - relativedelta(weeks=2)
@@ -269,7 +296,7 @@ def get_orientation_from_dir(direction):
             return orientation
 
 def get_timeperiods_for_date(selected_date):
-    '''Get available timeperiods for the selected_data'''
+    '''Get available timeperiods for the selected date'''
     timeperiods = DATA[DATA['date']==selected_date]['period'].unique()
     if selected_date.weekday() > 4: #Weekend
         return TIMEPERIODS[(TIMEPERIODS['day_type']=='Weekend')&
