@@ -3,7 +3,6 @@ import logging
 import os
 from collections import OrderedDict
 from datetime import datetime
-
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -34,7 +33,11 @@ else:
     con = connect(**dbset)
 
 DATA = pandasql.read_sql('''
-                         SELECT * from data_analysis.richmond_dash_daily
+                         SELECT street, case when direction = 'EB' then 'Eastbound'
+                        when direction = 'WB' then 'Westbound'
+                        when direction = 'NB' then 'Northbound'
+                        when direction ='SB' then 'Southbound' end as direction, 
+                        date, day_type, category, period, tt, most_recent, week_number, month_number from data_analysis.richmond_dash_daily
                          ''', con)
 BASELINE = pandasql.read_sql('''SELECT street, direction, from_intersection, to_intersection, 
                              day_type, period, period_range, tt
@@ -141,9 +144,9 @@ server = app.server
 
 # TODO: change this to the path where this will live on the EC2, this also 
 # needs to detect if it's operated in Heroku
-# app.config.update({
-#         'requests_pathname_prefix': '/dvp-dashboard/',
-# })
+app.config.update({
+         'requests_pathname_prefix': '/richmond-watermain/',
+ })
 
 # Something for heroku
 server.secret_key = os.environ.get('SECRET_KEY', 'my-secret-key')
@@ -276,10 +279,10 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
 
     selected_filter = selected_data(filtered_daily, daterange_type, date_range_id)
 
-    pilot_data = filtered_daily[(filtered_daily['category'] == 'Pilot') &
+    pilot_data = filtered_daily[(filtered_daily['category'] == 'Closure') &
                                 ~(selected_filter)]
 
-    pilot_data_selected = filtered_daily[(filtered_daily['category'] == 'Pilot') &
+    pilot_data_selected = filtered_daily[(filtered_daily['category'] == 'Closure') &
                                          (selected_filter)]
     return (base_line, base_line_data, pilot_data, pilot_data_selected)
 
@@ -457,7 +460,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     else:
         pilot_data = generate_graph_data(after_df,
                                      marker=dict(color=PLOT_COLORS['pilot']),
-                                     name='Pilot')
+                                     name='Closure')
         data.append(pilot_data)
     pilot_data_selected = generate_graph_data(selected_df,
                                               marker=dict(color=PLOT_COLORS['selected']),
