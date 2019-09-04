@@ -69,7 +69,7 @@ TITLE = 'Richmond Watermain Closure - Travel Time Impact'
 
 # Hard coded ordering of street names for displaying in the data table for each 
 # tab by the "orientation" of those streets. E.g. 'ew' for East-West
-STREETS = OrderedDict(ew=['Dundas', 'Queen', 'Richmond', 'Adelaide', 'King', 'Wellington', 'Front'],
+STREETS = OrderedDict(ew=['Dundas', 'Queen', 'Richmond', 'Adelaide', 'Wellington', 'Front'],
                       ns=['Bathurst', 'Spadina', 'University'])
 # Directions assigned to each tab
 DIRECTIONS = OrderedDict(ew=['Eastbound', 'Westbound'],
