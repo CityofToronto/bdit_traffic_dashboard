@@ -457,6 +457,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     data = []
     if after_df.empty:
         if selected_df.empty and base_df.empty:
+            LOGGER.warning('No data to display on graph')
             return None
     else:
         pilot_data = generate_graph_data(after_df,
