@@ -233,7 +233,7 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
             date_picked = WEEKS[WEEKS['week_number'] == date_range_id]['week'].iloc[0]
         start_of_week = date_picked - relativedelta(days=date_picked.weekday())
         start_range = max(start_of_week - relativedelta(weeks=1), DATERANGE[0])
-        end_range = min(start_of_week + relativedelta(weeks=2), DATERANGE[1] + relativedelta(days=1))
+        end_range = min(start_of_week + relativedelta(weeks=1), DATERANGE[1] + relativedelta(days=1))
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0].date()
         if date_picked == DATERANGE[1].replace(day=1):
