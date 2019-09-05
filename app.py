@@ -275,16 +275,17 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
                          (BASELINE['day_type'] == day_type) &
                          (BASELINE['direction'] == direction)]
 
-    base_line_data = filtered_daily[filtered_daily['category'] == 'Baseline']
 
     selected_filter = selected_data(filtered_daily, daterange_type, date_range_id)
 
+    base_line_data = filtered_daily[(filtered_daily['category'] == 'Baseline') &
+                                ~(selected_filter)]
     pilot_data = filtered_daily[(filtered_daily['category'] == 'Closure') &
                                 ~(selected_filter)]
 
-    pilot_data_selected = filtered_daily[(filtered_daily['category'] == 'Closure') &
-                                         (selected_filter)]
-    return (base_line, base_line_data, pilot_data, pilot_data_selected)
+    data_selected = filtered_daily[(selected_filter)]
+
+    return (base_line, base_line_data, pilot_data, data_selected)
 
 def get_orientation_from_dir(direction):
     '''Get the orientation of the street based on its direction'''
@@ -455,23 +456,24 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     orientation = get_orientation_from_dir(direction)
     data = []
     if after_df.empty:
-        if selected_df.empty:
+        if selected_df.empty and base_df.empty:
             return None
     else:
         pilot_data = generate_graph_data(after_df,
                                      marker=dict(color=PLOT_COLORS['pilot']),
                                      name='Closure')
         data.append(pilot_data)
-    pilot_data_selected = generate_graph_data(selected_df,
-                                              marker=dict(color=PLOT_COLORS['selected']),
-                                              name='Selected')
-    data.append(pilot_data_selected)
 
     if not base_df.empty:
         baseline_data = generate_graph_data(base_df,
                                             marker=dict(color=PLOT_COLORS['baseline']),
                                             name='Baseline')
         data.append(baseline_data)
+    
+    data_selected = generate_graph_data(selected_df,
+                                              marker=dict(color=PLOT_COLORS['selected']),
+                                              name='Selected')
+    data.append(data_selected)
     
     annotations = [dict(x=-0.008,
                         y=base_line.iloc[0]['tt'] + 2,
