@@ -114,7 +114,7 @@ CONTROLS = dict(div_id='controls-div',
                 date_range_span='date-range-span',
                 date_picker='date-picker-div',
                 date_picker_span='date-picker-span')
-DATERANGE_TYPES = ['Last Day', 'Select Date', 'Select Week', 'Select Month']
+DATERANGE_TYPES = ['Select Date', 'Select Week', 'Select Month']
 GRAPHS = ['eb_graph', 'wb_graph']
 GRAPHDIVS = ['eb_graph_div', 'wb_graph_div']
 
@@ -177,7 +177,7 @@ def serialise_state(clicks_dict):
 def pivot_order(df, orientation = 'ew', date_range_type=1):
     '''Pivot the dataframe around street directions and order by STREETS global var
     '''
-    if DATERANGE_TYPES[date_range_type] in ['Last Day', 'Select Date'] and     'date' in df.columns:
+    if DATERANGE_TYPES[date_range_type] == 'Select Date' and     'date' in df.columns:
         # Don't aggregate by date
         pivoted = df.pivot_table(index=['street', 'date'],
                                  columns='direction',
@@ -189,12 +189,10 @@ def pivot_order(df, orientation = 'ew', date_range_type=1):
     pivoted.street.cat.set_categories(STREETS[orientation], inplace=True)
     return pivoted.sort_values(['street']).round(1)
 
-def selected_data(data, daterange_type=0, date_range_id=1):
+def selected_data(data, daterange_type=0, date_range_id=DATERANGE[1]):
     '''Returns a boolean column indicating whether the provided data was selected or not
     '''
-    if DATERANGE_TYPES[daterange_type] == 'Last Day':
-        date_filter = data['most_recent'] == 1
-    elif DATERANGE_TYPES[daterange_type] == 'Select Date':
+    if DATERANGE_TYPES[daterange_type] == 'Select Date':
         date_filter = data['date'] == date_range_id
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         date_filter = data['week_number'] == date_range_id
@@ -202,7 +200,7 @@ def selected_data(data, daterange_type=0, date_range_id=1):
         date_filter = data['month_number'] == date_range_id
     return date_filter
 
-def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date_range_id=1):
+def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date_range_id=DATERANGE[1]):
     '''Return data aggregated and filtered by period, day type, tab, date range
     '''
 
@@ -228,11 +226,7 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
     '''Determine bounds for the x-axis of the graphs based on the type of 
     daterange and the selected date range
     '''
-    if DATERANGE_TYPES[daterange_type] == 'Last Day':
-        end_range = DATERANGE[1] + relativedelta(days=1)
-        start_range = DATERANGE[1] - relativedelta(weeks=2)
-        date_picked = date_range_id
-    elif DATERANGE_TYPES[daterange_type] in ['Select Date', 'Select Week']:
+    if DATERANGE_TYPES[daterange_type] in ['Select Date', 'Select Week']:
         if DATERANGE_TYPES[daterange_type] == 'Select Date':
             date_picked = date_range_id
         else:
@@ -256,7 +250,7 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
     return [start_range, end_range]
 
 def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
-                      daterange_type=0, date_range_id=1):
+                      daterange_type=0, date_range_id=DATERANGE[1]):
     '''Filter dataframes by street, direction, day_type, and period
     Returns a filtered baseline, and a filtered current dataframe
     '''
@@ -310,7 +304,7 @@ def get_timeperiods_for_date(selected_date):
 ###################################################################################################
 
 
-def generate_date_ranges(daterange_type=2):
+def generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')):
     '''Generate an array of dropdown menu options depending on the date range type
     '''
 
@@ -382,7 +376,7 @@ def generate_row(df_row, baseline_row, row_state, orientation='ew'):
                    className=generate_row_class(row_state['clicked']),
                    n_clicks=row_state['n_clicks'])
 
-def generate_table(state, day_type, period, orientation='ew', daterange_type=0, date_range_id=1):
+def generate_table(state, day_type, period, orientation='ew', daterange_type=0, date_range_id=DATERANGE[1]):
     """Generate HTML table of streets and before-after values
 
         :param state:
@@ -405,7 +399,7 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
                  + ', orientation: ' + str(orientation) )
     filtered_data, baseline = filter_table_data(period, day_type, orientation, daterange_type, date_range_id)
     #Current date for the data, to replace "After" header
-    if DATERANGE_TYPES[daterange_type] in ['Last Day', 'Select Date']:
+    if DATERANGE_TYPES[daterange_type] == 'Select Date':
         day = filtered_data['date'].iloc[0].strftime('%a %b %d')
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
@@ -443,7 +437,7 @@ def generate_graph_data(data, **kwargs):
                 **kwargs)
 
 def generate_figure(street, direction, day_type='Weekday', period='AMPK',
-                    daterange_type=0, date_range_id=1):
+                    daterange_type=0, date_range_id=DATERANGE[1]):
     '''Generate a Dash bar chart of average travel times by day
     '''
     base_line, base_df, after_df, selected_df = filter_graph_data(street,
@@ -531,7 +525,7 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
                                     clearable=False),
                                     title='Select a date range type to filter table data'),
                            html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
-                                                  options=generate_date_ranges(daterange_type=3),
+                                                  options=generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
                                                   value = 1,
                                                   clearable=False),
                                      id=CONTROLS['date_range_span'],
@@ -698,7 +692,7 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
                  + ', day_type ' + str(day_type) 
                  + ', date_range_id ' + str(date_range_id) 
                  + ', orientation  ' + str(orientation)     )
-    if daterange_type == 1:
+    if DATERANGE_TYPES[daterange_type] == 'Select Date':
         date_range_id = datetime.strptime(date_picked, '%Y-%m-%d').date()
     state_index = list(STREETS.keys()).index(orientation)
     state_data_dict = deserialise_state(state_data[state_index])
@@ -707,11 +701,9 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
                            orientation=orientation,
                            daterange_type=daterange_type,
                            date_range_id=date_range_id)
-    if daterange_type == 0:
-        LOGGER.debug('Table returned for Last Day')
-    elif  daterange_type == 1:
+    if DATERANGE_TYPES[daterange_type] == 'Select Date':
         LOGGER.debug('Table returned for Selected Date: %s', date_range_id.strftime('%a %b %d'))
-    elif daterange_type == 2:
+    elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         LOGGER.debug('Table returned for Week')
 
     return table
@@ -719,7 +711,7 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
 @app.callback(Output(CONTROLS['date_range_span'], 'style'),
               [Input(CONTROLS['date_range_type'], 'value')])
 def hide_reveal_date_range(daterange_type):
-    if daterange_type > 1:
+    if DATERANGE_TYPES[daterange_type] != 'Select Date':
         return {'display':'inline'}
     else:
         return {'display':'none'}
@@ -727,7 +719,7 @@ def hide_reveal_date_range(daterange_type):
 @app.callback(Output(CONTROLS['day_types'], 'style'),
               [Input(CONTROLS['date_range_type'], 'value')])
 def hide_reveal_day_types(daterange_type):
-    if daterange_type != 1:
+    if DATERANGE_TYPES[daterange_type] != 'Select Date':
         return {'display':'inline'}
     else:
         return {'display':'none'}
@@ -736,7 +728,7 @@ def hide_reveal_day_types(daterange_type):
               [Input(CONTROLS['date_range_type'], 'value')])
 def hide_reveal_date_picker(daterange_type):
     LOGGER.debug('Hide reveal date picker, daterange_type: ' + str(daterange_type))
-    if daterange_type == 1:
+    if DATERANGE_TYPES[daterange_type] == 'Select Date':
         LOGGER.debug('Reveal date picker')
         return {'display':'inline'}
     else:
@@ -751,7 +743,7 @@ def generate_date_range_for_type(daterange_type):
               [Input(CONTROLS['date_range_type'], 'value')],
               [State(CONTROLS['date_range'], 'value')])
 def update_date_range_value(daterange_type, date_range_id):
-    if daterange_type == 1:
+    if DATERANGE_TYPES[daterange_type] == 'Select Date':
         date_range_id
     if not RANGES[daterange_type].empty and date_range_id <= len(RANGES[daterange_type]):
         return date_range_id
@@ -867,7 +859,7 @@ def create_update_graph_div(graph_number):
         '''
         *selected_streets, daterange_type, date_range, date_picked = args
         #Use the input for the selected street from the orientation of the current tab
-        if daterange_type == 1:
+        if DATERANGE_TYPES[daterange_type] == 'Select Date':
             date_range = datetime.strptime(date_picked, '%Y-%m-%d').date()
         street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
         LOGGER.debug('Updating graph %s, for street: %s, period: %s, day_type: %s, daterange_type: %s, date_range: %s',
