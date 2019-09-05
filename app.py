@@ -6,6 +6,7 @@ from datetime import datetime
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+#import dash_daq as daq
 import pandas as pd
 import pandas.io.sql as pandasql
 from numpy import nan
@@ -449,6 +450,12 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
 
     orientation = get_orientation_from_dir(direction)
     data = []
+    # set the number of ticks for graph 
+    if DATERANGE_TYPES[daterange_type] == 'Select Date' or DATERANGE_TYPES[daterange_type] == 'Select Week':
+        tick_number = 12
+    elif DATERANGE_TYPES[daterange_type] == 'Select Month':
+        tick_number = 15
+
     if after_df.empty:
         if selected_df.empty and base_df.empty:
             LOGGER.warning('No data to display on graph')
@@ -469,7 +476,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                               marker=dict(color=PLOT_COLORS['selected']),
                                               name='Selected')
     data.append(data_selected)
-    
+
     annotations = [dict(x=-0.008,
                         y=base_line.iloc[0]['tt'] + 2,
                         text='Baseline',
@@ -491,10 +498,12 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                   height=225,
                   barmode='relative',
                   xaxis=dict(title='Date',
-                              fixedrange=True), #Prevents zoom
+                             tickformat = '%b %d',
+                             nticks = tick_number,
+                             fixedrange=True), #Prevents zoom
                   yaxis=dict(title='Travel Time (min)',
-                              range=[0, MAX_TIME[orientation]],
-                              fixedrange=True),
+                             range=[0, MAX_TIME[orientation]],
+                             fixedrange=True),
                   shapes=[line],
                   margin=PLOT['margin'],
                   annotations=annotations,
