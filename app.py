@@ -2,11 +2,10 @@ import json
 import logging
 import os
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, date
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-#import dash_daq as daq
 import pandas as pd
 import pandas.io.sql as pandasql
 from numpy import nan
@@ -214,7 +213,7 @@ def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date
                     (DATA['category'] != 'Excluded') &
                     (date_filter)]
     pivoted = pivot_order(filtered, orientation, daterange_type)
-
+        
     #baseline data
     filtered_base = BASELINE[(BASELINE['period'] == period) &
                              (BASELINE['day_type'] == day_type) &
@@ -232,9 +231,13 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
             date_picked = date_range_id
         else:
             date_picked = WEEKS[WEEKS['week_number'] == date_range_id]['week'].iloc[0]
+        
         start_of_week = date_picked - relativedelta(days=date_picked.weekday())
         start_range = max(start_of_week - relativedelta(weeks=1), DATERANGE[0])
-        end_range = min(start_of_week + relativedelta(weeks=1), DATERANGE[1] + relativedelta(days=1))
+        if date_picked < date(2019,7,7):
+            end_range = min(start_of_week + relativedelta(weeks=2), DATERANGE[1] + relativedelta(days=1))
+        else:    
+            end_range = min(start_of_week + relativedelta(weeks=1), DATERANGE[1] + relativedelta(days=1))
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0].date()
         if date_picked == DATERANGE[1].replace(day=1):
@@ -401,7 +404,11 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
     filtered_data, baseline = filter_table_data(period, day_type, orientation, daterange_type, date_range_id)
     #Current date for the data, to replace "After" header
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
-        day = filtered_data['date'].iloc[0].strftime('%a %b %d')
+        try:
+            day = filtered_data['date'].iloc[0].strftime('%a %b %d')
+        except IndexError:
+            day = date_range_id.strftime('%a %b %d')
+            LOGGER.warning(day + ' has no data')
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
@@ -421,6 +428,7 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
                            state[street],
                            orientation)
         rows.append(row) 
+    
 
     return html.Table([html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], colSpan=2), html.Td(DIRECTIONS[orientation][1], colSpan=2)])] +
                       [html.Tr([html.Td(""), html.Td(day), html.Td("Baseline"), html.Td(day), html.Td("Baseline")])] +
@@ -450,9 +458,8 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
 
     orientation = get_orientation_from_dir(direction)
     data = []
-    # set the number of ticks for graph 
     if DATERANGE_TYPES[daterange_type] == 'Select Date' or DATERANGE_TYPES[daterange_type] == 'Select Week':
-        tick_number = 12
+        tick_number = 13
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         tick_number = 15
 
@@ -502,7 +509,10 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                              nticks = tick_number,
                              fixedrange=True), #Prevents zoom
                   yaxis=dict(title='Travel Time (min)',
-                             range=[0, MAX_TIME[orientation]],
+ #                            range=[0, MAX_TIME[orientation]],
+                             range = [0,30],
+                             tickmode = 'linear',
+                             dtick =5,
                              fixedrange=True),
                   shapes=[line],
                   margin=PLOT['margin'],
@@ -524,7 +534,7 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
                                                 'value': day_type}
                                                for day_type in TIMEPERIODS['day_type'].unique()],
                                       value=TIMEPERIODS.iloc[0]['day_type'],
-                                      className='radio-toolbar'),
+                                      className='radio-toolbar'),              
                        html.Span(children=[
                            html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
                                     options=[{'label': label,
@@ -551,6 +561,7 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
                                      style={'display':'none'})
                                      ])],
              style={'display':'none'}),
+    html.Div(id='dow_switch_output'),
     html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
     html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),
               ' 1+ min', html.B(' longer'), ' than baseline']),
@@ -559,10 +570,10 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
     ],
                            className='four columns'),
     html.H2(id=STREETNAME_DIV[0], children=[html.B('Dundas Eastbound:'),
-                                                ' Bathurst - Jarvis']),
+                                                ' from Bathurst to Jarvis']),
     html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0]), className='eight columns'),
     html.H2(id=STREETNAME_DIV[1], children=[html.B('Dundas Westbound:'),
-                                                ' Jarvis - Bathurst']),
+                                                ' from Jarvis to Bathurst']),
     html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1]), className='eight columns')
                ], id=LAYOUTS['streets'])
 
@@ -845,7 +856,7 @@ def create_update_street_name(dir_id):
             return html.Div(className = 'nodata')
         else:
             return [html.B(street[0] + ' ' + DIRECTIONS[orientation][dir_id] + ': '),
-                    from_to['from_intersection'] + ' - ' + from_to['to_intersection']]
+                    'from ' + from_to['from_intersection'] + ' to ' + from_to['to_intersection']]
 
 [create_update_street_name(i) for i in [0,1]]
 
