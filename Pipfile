@@ -1,12 +1,9 @@
 [[source]]
-
 name = "pypi"
 verify_ssl = true
 url = "https://pypi.python.org/simple"
 
-
 [packages]
-
 dash = "==1.0.1"
 dash-core-components = "==1.0.0"
 dash-html-components = "==1.0.0"
@@ -16,7 +13,7 @@ plotly = "==3.7.0"
 gunicorn = "*"
 pandas = "*"
 python-dateutil = "*"
-
+dash-daq = "==0.1.0"
 
 [dev-packages]
-
+pylint = "*"
