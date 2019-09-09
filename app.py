@@ -43,6 +43,7 @@ BASELINE = pandasql.read_sql('''SELECT street, direction, from_intersection, to_
                              day_type, period, period_range, tt
                              FROM data_analysis.richmond_dash_baseline''',
                              con)
+HOLIDAY = pandasql.read_sql(''' SELECT dt FROM ref.holiday WHERE dt > '2019-07-02' ''', con, parse_dates=['dt',])
 
 # Numbering Weeks and Months for Dropdown Selectors
 WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_weeks 
@@ -223,7 +224,7 @@ def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date
     pivoted_baseline = pivot_order(filtered_base, orientation)
 
     return (pivoted, pivoted_baseline)
-
+    
 def graph_bounds_for_date_range(daterange_type, date_range_id):
     '''Determine bounds for the x-axis of the graphs based on the type of 
     daterange and the selected date range
@@ -248,19 +249,17 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
             end_range = min(date_picked - relativedelta(days=date_picked.day - 1) + relativedelta(months=1), DATERANGE[1] + relativedelta(days=1))
 
         else:
-           # figure out if start_range is a weekend or weekday
-            if date_picked.weekday() == 1:
-               start_range = max(date_picked - relativedelta(days=date_picked.day - 1) - relativedelta(days=3), DATERANGE[0])
-            elif date_picked.weekday() == 7:
-               start_range = max(date_picked - relativedelta(days=date_picked.day - 1) - relativedelta(days=2), DATERANGE[0]) 
-            else:
-               start_range = max(date_picked - relativedelta(days=date_picked.day - 1) - relativedelta(days=1), DATERANGE[0])
-            
+            # check if start_range starts on a weekend or is a holiday
+            start_range = max(date_picked - relativedelta(days=date_picked.day - 1) - relativedelta(days=1), DATERANGE[0])
+            while start_range.weekday() not in (1,2,3,4,5) or (HOLIDAY['dt'] == start_range).sum() > 0:
+               start_range = start_range - relativedelta(days=1)
+
             # do the same for end_range
-            if date_picked.weekday() == 5:
-                end_range = min(date_picked - relativedelta(days=date_picked.day - 1) + relativedelta(months=1) + relativedelta(days=3), DATERANGE[1] + relativedelta(days=1)) 
-            else:
-                end_range = min(date_picked - relativedelta(days=date_picked.day - 1) + relativedelta(months=1) + relativedelta(days=1), DATERANGE[1] + relativedelta(days=1)) 
+            end_range = min(date_picked - relativedelta(days=date_picked.day - 1) + relativedelta(months=1), DATERANGE[1] + relativedelta(days=1)) 
+            while end_range.weekday() not in (1,2,3,4,5) or (HOLIDAY['dt'] == start_range).sum() > 0:
+                end_range = end_range + relativedelta(days=1)
+            end_range = end_range + relativedelta(days=1)    
+            
     else:
         raise ValueError('Wrong daterange_type provided: {}'.format(daterange_type))
     LOGGER.debug('Filtering for %s. Date picked: %s, Start Range: %s, End Range: %s',
