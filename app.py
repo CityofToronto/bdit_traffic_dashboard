@@ -415,11 +415,7 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
                  + ', date_range_id: ' + str(date_range_id) 
                  + ', orientation: ' + str(orientation) )
     filtered_data, baseline = filter_table_data(period, day_type, orientation, daterange_type, date_range_id)
-    LOGGER.debug(date_range_id)
     #Current date for the data, to replace "After" header
-    daterange = graph_bounds_for_date_range(daterange_type, date_range_id)
-    start_range = daterange[0]
-    
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
         try:
             day = filtered_data['date'].iloc[0].strftime('%a %b %d')
@@ -429,7 +425,8 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
-        day = start_range.strftime("%b '%y")
+        date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0].date()
+        day = date_picked.strftime("%b '%y")
         
     rows = []
     for baseline_row, street in zip(baseline.iterrows(), baseline['street'].values):
