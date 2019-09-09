@@ -51,7 +51,9 @@ MONTHS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_month
                          ''', con, parse_dates=['month'])
 WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week'].astype(str)
 WEEKS.sort_values(by='week_number', inplace=True)
-MONTHS['label'] = 'Month ' + MONTHS['month_number'].astype(str) + ': ' + MONTHS['month'].dt.strftime("%b '%y")
+#MONTHS['label'] = 'Month ' + MONTHS['month_number'].astype(str) + ': ' + MONTHS['month'].dt.strftime("%b '%y")
+MONTHS['label'] = MONTHS['month'].dt.strftime("%b '%y")
+
 
 #Range types: Latest Day, Select Date, WEEKS, MONTHS
 RANGES = [pd.DataFrame(), pd.DataFrame(), WEEKS, MONTHS]
@@ -402,7 +404,11 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
                  + ', date_range_id: ' + str(date_range_id) 
                  + ', orientation: ' + str(orientation) )
     filtered_data, baseline = filter_table_data(period, day_type, orientation, daterange_type, date_range_id)
+    LOGGER.debug(date_range_id)
     #Current date for the data, to replace "After" header
+    daterange = graph_bounds_for_date_range(daterange_type, date_range_id)
+    start_range = daterange[0]
+    
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
         try:
             day = filtered_data['date'].iloc[0].strftime('%a %b %d')
@@ -412,8 +418,8 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
-        day = 'Month ' + str(date_range_id)
-
+        day = start_range.strftime("%b '%y")
+        
     rows = []
     for baseline_row, street in zip(baseline.iterrows(), baseline['street'].values):
     # Generate a row for each street, keeping in mind the state (which row is clicked)
@@ -523,18 +529,18 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                           
 #Elements to include in the "main-"
 STREETS_LAYOUT = html.Div(children=[html.Div(children=[
-    html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),
+  #  html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),
     html.Button(id=CONTROLS['toggle'], children='Show Filters'),
     html.Div(id=CONTROLS['div_id'],
-             children=[dcc.RadioItems(id=CONTROLS['timeperiods'],
-                                      value=TIMEPERIODS.iloc[0]['period'],
-                                      className='radio-toolbar'),
-                       dcc.RadioItems(id=CONTROLS['day_types'],
+             children=[dcc.RadioItems(id=CONTROLS['day_types'],
                                       options=[{'label': day_type,
                                                 'value': day_type}
                                                for day_type in TIMEPERIODS['day_type'].unique()],
                                       value=TIMEPERIODS.iloc[0]['day_type'],
-                                      className='radio-toolbar'),              
+                                      className='radio-toolbar'),   
+                       dcc.RadioItems(id=CONTROLS['timeperiods'],
+                                      value=TIMEPERIODS.iloc[0]['period'],
+                                      className='radio-toolbar'),                          
                        html.Span(children=[
                            html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
                                     options=[{'label': label,
@@ -569,6 +575,7 @@ STREETS_LAYOUT = html.Div(children=[html.Div(children=[
               ' 1+ min', html.B(' shorter'), ' than baseline']),
     ],
                            className='four columns'),
+    html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),                       
     html.H2(id=STREETNAME_DIV[0], children=[html.B('Dundas Eastbound:'),
                                                 ' from Bathurst to Jarvis']),
     html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0]), className='eight columns'),
@@ -725,6 +732,8 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
         LOGGER.debug('Table returned for Selected Date: %s', date_range_id.strftime('%a %b %d'))
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         LOGGER.debug('Table returned for Week')
+    elif DATERANGE_TYPES[daterange_type] == 'Select Month':
+        LOGGER.debug('Table returned for Month')
 
     return table
 
