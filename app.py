@@ -242,13 +242,25 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
             end_range = min(start_of_week + relativedelta(weeks=1), DATERANGE[1] + relativedelta(days=1))
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0].date()
-        if date_picked == DATERANGE[1].replace(day=1):
-            #End of data within month picked, display last month of data
-            start_range = max(DATERANGE[1] - relativedelta(months=1), DATERANGE[0])
+        # End of data within month picked and have less than 14 days of data, display 14 days of data of last month
+        if date_picked == DATERANGE[1].replace(day=1) and DATERANGE[1].day < 14:
+            start_range = max(date_picked - relativedelta(days=date_picked.day - 1) - relativedelta(days=14), DATERANGE[0])
+            end_range = min(date_picked - relativedelta(days=date_picked.day - 1) + relativedelta(months=1), DATERANGE[1] + relativedelta(days=1))
+
         else:
-            start_range = max(date_picked - relativedelta(days=date_picked.day - 1), DATERANGE[0])
-        end_range = min(date_picked - relativedelta(days=date_picked.day - 1) + relativedelta(months=1),
-                        DATERANGE[1] + relativedelta(days=1))
+           # figure out if start_range is a weekend or weekday
+            if date_picked.weekday() == 1:
+               start_range = max(date_picked - relativedelta(days=date_picked.day - 1) - relativedelta(days=3), DATERANGE[0])
+            elif date_picked.weekday() == 7:
+               start_range = max(date_picked - relativedelta(days=date_picked.day - 1) - relativedelta(days=2), DATERANGE[0]) 
+            else:
+               start_range = max(date_picked - relativedelta(days=date_picked.day - 1) - relativedelta(days=1), DATERANGE[0])
+            
+            # do the same for end_range
+            if date_picked.weekday() == 5:
+                end_range = min(date_picked - relativedelta(days=date_picked.day - 1) + relativedelta(months=1) + relativedelta(days=3), DATERANGE[1] + relativedelta(days=1)) 
+            else:
+                end_range = min(date_picked - relativedelta(days=date_picked.day - 1) + relativedelta(months=1) + relativedelta(days=1), DATERANGE[1] + relativedelta(days=1)) 
     else:
         raise ValueError('Wrong daterange_type provided: {}'.format(daterange_type))
     LOGGER.debug('Filtering for %s. Date picked: %s, Start Range: %s, End Range: %s',
