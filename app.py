@@ -105,6 +105,7 @@ FONT_FAMILY = '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial,
 STATE_DIV_IDS = OrderedDict([(orientation, 'clicks-storage' + orientation) for orientation in STREETS])
 MAIN_DIV = 'main-page'
 STREETNAME_DIV = ['street-name-'+str(i) for i in [0, 1]]
+STREETNAME = 'street-name'
 SELECTED_STREET_DIVS = OrderedDict([(orientation, 'selected-street' + orientation) for orientation in STREETS])
 TABLE_DIV_ID = 'div-table'
 TIMEPERIOD_DIV = 'timeperiod'
@@ -536,64 +537,69 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     return {'layout': layout, 'data': data}
                                           
 #Elements to include in the "main-"
-STREETS_LAYOUT = html.Div(children=[html.Div(children=[
-  #  html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),
-    html.Button(id=CONTROLS['toggle'], children='Show Filters'),
-    html.Div(id=CONTROLS['div_id'],
-             children=[dcc.RadioItems(id=CONTROLS['day_types'],
-                                      options=[{'label': day_type,
-                                                'value': day_type}
-                                               for day_type in TIMEPERIODS['day_type'].unique()],
-                                      value=TIMEPERIODS.iloc[0]['day_type'],
-                                      className='radio-toolbar'),   
-                       dcc.RadioItems(id=CONTROLS['timeperiods'],
-                                      value=TIMEPERIODS.iloc[0]['period'],
-                                      className='radio-toolbar'),                          
-                       html.Span(children=[
-                           html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
-                                    options=[{'label': label,
-                                              'value': value}
-                                             for value, label in enumerate(DATERANGE_TYPES)],
-                                    value=0,
-                                    clearable=False),
-                                    title='Select a date range type to filter table data'),
-                           html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
-                                                  options=generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
-                                                  value = 1,
-                                                  clearable=False),
-                                     id=CONTROLS['date_range_span'],
-                                     style={'display':'none'}),
-                           html.Span(dcc.DatePickerSingle(id=CONTROLS['date_picker'],
-                                                          clearable=False,
-                                                          min_date_allowed=DATERANGE[0],
-                                                          max_date_allowed=DATERANGE[1],
-                                                          date=DATERANGE[1],
-                                                          display_format='MMM DD',
-                                                          month_format='MMM',
-                                                          show_outside_days=True),
-                                     id=CONTROLS['date_picker_span'],
-                                     style={'display':'none'})
-                                     ])],
-             style={'display':'none'}),
-    html.Div(id='dow_switch_output'),
-    html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
-    html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),
-              ' 1+ min', html.B(' longer'), ' than baseline']),
-    html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),
-              ' 1+ min', html.B(' shorter'), ' than baseline']),
+STREETS_LAYOUT = html.Div(children=[
+    html.Div(children=[      
+        html.Div(id=CONTROLS['div_id'],
+                children=[html.H3('Follow these steps to visualize and compare travel time impacts:'),
+                          html.H3('Step 1: Select the type of period (date, week, month)'),
+                          html.Span(children=[
+                                html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
+                                        options=[{'label': label,
+                                                'value': value}
+                                                for value, label in enumerate(DATERANGE_TYPES)],
+                                        value=0,
+                                        clearable=False),
+                                        title='Select a date range type to filter table data'),
+                                html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
+                                                    options=generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
+                                                    value = 1,
+                                                    clearable=False),
+                                        id=CONTROLS['date_range_span'],
+                                        style={'display':'none'}),
+                                html.Span(dcc.DatePickerSingle(id=CONTROLS['date_picker'],
+                                                            clearable=False,
+                                                            min_date_allowed=DATERANGE[0],
+                                                            max_date_allowed=DATERANGE[1],
+                                                            date=DATERANGE[1],
+                                                            display_format='MMM DD',
+                                                            month_format='MMM',
+                                                            show_outside_days=True),
+                                        id=CONTROLS['date_picker_span'],
+                                        style={'display':'none'})
+                                        ]),
+                            html.H3('Step 2: Select a date range type'),         
+                                dcc.RadioItems(id=CONTROLS['day_types'],
+                                                options=[{'label': day_type,
+                                                            'value': day_type}
+                                                        for day_type in TIMEPERIODS['day_type'].unique()],
+                                                value=TIMEPERIODS.iloc[0]['day_type'],
+                                                className='radio-toolbar'),   
+                                dcc.RadioItems(id=CONTROLS['timeperiods'],
+                                                value=TIMEPERIODS.iloc[0]['period'],
+                                                className='radio-toolbar'),
+                            html.H3('Step 3: Click on different streets to display'),                                                                             
+                        ],
+                        style={'display':'none'}),
+        html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
+        html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),
+                ' 1+ min', html.B(' longer'), ' than baseline']),
+        html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),
+                ' 1+ min', html.B(' shorter'), ' than baseline']), 
+        html.Button(id=CONTROLS['toggle'], children='Show Filters'),                 
     ],
-                           className='four columns'),
-    html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),                       
-    html.H2(id=STREETNAME_DIV[0], children=[html.B('Dundas Eastbound:'),
-                                                ' from Bathurst to Jarvis']),
-    html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0]), className='eight columns'),
-    html.H2(id=STREETNAME_DIV[1], children=[html.B('Dundas Westbound:'),
-                                                ' from Jarvis to Bathurst']),
-    html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1]), className='eight columns')
-               ], id=LAYOUTS['streets'])
+    className='four columns'),
+    html.Div(children=[html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),                     
+                        html.H2(id=STREETNAME_DIV[0], children=[html.B('Dundas Eastbound:'),
+                                                            ' from Bathurst to Jarvis']),
+                        html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
+                        html.H2(id=STREETNAME_DIV[1], children=[html.B('Dundas Westbound:'),
+                                                                    ' from Jarvis to Bathurst']),
+                        html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1])),
+                        ],
+                        className='eight columns')])
 
-app.layout = html.Div([#html.Link(rel='stylesheet',
-                        #         href='/css/dashboard.css'),
+app.layout = html.Div([html.Link(rel='stylesheet',
+                                 href='/css/dashboard.css'),
                        #html.Link(rel='stylesheet',
                        #          href='/css/style.css'),
                        html.Div(children=[html.H1(children=TITLE, id='title')],
@@ -788,7 +794,6 @@ def update_date_range_value(daterange_type, date_range_id):
         return 1
 
 
-
 def create_row_update_function(streetname, orientation):
     '''Create a callback function for a given streetname
     streetname is the id for the row in the datatable
@@ -927,6 +932,12 @@ def update_timeperiod(timeperiod, day_type):
     '''
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
     return day_type + ' ' + timeperiod + ' ' + time_range
+
+@app.callback(Output(STREETNAME, 'children'),
+            [Input('street-name', 'value')])
+def update_main_street(street):
+    print(street) 
+    return street
 
 
 if __name__ == '__main__':
