@@ -105,7 +105,6 @@ FONT_FAMILY = '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial,
 STATE_DIV_IDS = OrderedDict([(orientation, 'clicks-storage' + orientation) for orientation in STREETS])
 MAIN_DIV = 'main-page'
 STREETNAME_DIV = ['street-name-'+str(i) for i in [0, 1]]
-STREETNAME = 'street-name'
 SELECTED_STREET_DIVS = OrderedDict([(orientation, 'selected-street' + orientation) for orientation in STREETS])
 TABLE_DIV_ID = 'div-table'
 TIMEPERIOD_DIV = 'timeperiod'
@@ -540,8 +539,8 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
 STREETS_LAYOUT = html.Div(children=[
     html.Div(children=[      
         html.Div(id=CONTROLS['div_id'],
-                children=[html.H3('Follow these steps to visualize and compare travel time impacts:'),
-                          html.H3('Step 1: Select the type of period (date, week, month)'),
+                children=[html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18}),
+                          html.H3('Step 1: Select the type of period (date, week, month)', style={'fontSize':16, 'marginTop': 15} ),
                           html.Span(children=[
                                 html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
                                         options=[{'label': label,
@@ -567,7 +566,7 @@ STREETS_LAYOUT = html.Div(children=[
                                         id=CONTROLS['date_picker_span'],
                                         style={'display':'none'})
                                         ]),
-                            html.H3('Step 2: Select a date range type'),         
+                            html.H3('Step 2: Select a date range type', style={'fontSize':16, 'marginTop': 15} ),         
                                 dcc.RadioItems(id=CONTROLS['day_types'],
                                                 options=[{'label': day_type,
                                                             'value': day_type}
@@ -577,7 +576,7 @@ STREETS_LAYOUT = html.Div(children=[
                                 dcc.RadioItems(id=CONTROLS['timeperiods'],
                                                 value=TIMEPERIODS.iloc[0]['period'],
                                                 className='radio-toolbar'),
-                            html.H3('Step 3: Click on different streets to display'),                                                                             
+                            html.H3('Step 3: Click on different streets to display', style={'fontSize':16, 'marginTop': 15} ),                                                                             
                         ],
                         style={'display':'none'}),
         html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
@@ -932,13 +931,6 @@ def update_timeperiod(timeperiod, day_type):
     '''
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
     return day_type + ' ' + timeperiod + ' ' + time_range
-
-@app.callback(Output(STREETNAME, 'children'),
-            [Input('street-name', 'value')])
-def update_main_street(street):
-    print(street) 
-    return street
-
 
 if __name__ == '__main__':
     app.run_server(debug=True)
