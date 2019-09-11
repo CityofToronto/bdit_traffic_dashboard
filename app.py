@@ -6,6 +6,7 @@ from datetime import datetime, date
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_bootstrap_components as dbc
 import pandas as pd
 import pandas.io.sql as pandasql
 from numpy import nan
@@ -540,7 +541,7 @@ STREETS_LAYOUT = html.Div(children=[
     html.Div(children=[      
         html.Div(id=CONTROLS['div_id'],
                 children=[html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18}),
-                          html.H3('Step 1: Select the type of period (date, week, month)', style={'fontSize':16, 'marginTop': 15} ),
+                          html.H3('Step 1: Select the type of period (date, week, month)', style={'fontSize':16, 'marginTop': 10} ),
                           html.Span(children=[
                                 html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
                                         options=[{'label': label,
@@ -587,20 +588,19 @@ STREETS_LAYOUT = html.Div(children=[
         html.Button(id=CONTROLS['toggle'], children='Show Filters'),                 
     ],
     className='four columns'),
-    html.Div(children=[html.H2(id=TIMEPERIOD_DIV, children='Weekday AM Peak'),                     
-                        html.H2(id=STREETNAME_DIV[0], children=[html.B('Dundas Eastbound:'),
-                                                            ' from Bathurst to Jarvis']),
+    html.Div(children=[html.H2(id='streetss', style={'fontSize':30}),
+                        html.H2(id=TIMEPERIOD_DIV, style={'fontSize':20}),                     
+                        html.H2(id=STREETNAME_DIV[0], style={'fontSize':20}),
                         html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
-                        html.H2(id=STREETNAME_DIV[1], children=[html.B('Dundas Westbound:'),
-                                                                    ' from Jarvis to Bathurst']),
+                        html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
                         html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1])),
                         ],
                         className='eight columns')])
 
 app.layout = html.Div([html.Link(rel='stylesheet',
-                                 href='/css/dashboard.css'),
-                       #html.Link(rel='stylesheet',
-                       #          href='/css/style.css'),
+                                 href='/assets/dashboard.css'),
+                       html.Link(rel='stylesheet',
+                                 href='/assets/style.css'),
                        html.Div(children=[html.H1(children=TITLE, id='title')],
                                 className='row twelve columns'),
                        html.Div(dcc.Tabs(children=[dcc.Tab(label='East-West Streets', value='ew'),
@@ -616,17 +616,16 @@ app.layout = html.Div([html.Link(rel='stylesheet',
                                                          href="https://www1.toronto.ca/wps/portal/contentonly?vgnextoid=f98b551ed95ff410VgnVCM10000071d60f89RCRD")],
                                                          style={'text-align':'right',
                                                                 'padding-right':'1em'}),
-                                className='row'),
+                                className='row'),               
                        *[html.Div(id=STATE_DIV_IDS[orientation],
                                   style={'display': 'none'},
                                   children=serialise_state(state))
                          for orientation, state in INITIAL_STATE.items()],
                        *[html.Div(id=div_id,
                                   style={'display': 'none'},
-                                  children=[STREETS[orientation][0]])
+                                 children=[STREETS[orientation][0]])
                          for orientation, div_id in SELECTED_STREET_DIVS.items()]
                       ])
-
 
 ###################################################################################################
 #                                                                                                 #
@@ -876,10 +875,24 @@ def create_update_street_name(dir_id):
         except IndexError:
             return html.Div(className = 'nodata')
         else:
-            return [html.B(street[0] + ' ' + DIRECTIONS[orientation][dir_id] + ': '),
+            return [html.B(DIRECTIONS[orientation][dir_id] + ': '),
                     'from ' + from_to['from_intersection'] + ' to ' + from_to['to_intersection']]
 
 [create_update_street_name(i) for i in [0,1]]
+
+
+@app.callback(Output('streetss', 'children'),
+                  [*[Input(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()],
+                   Input('tabs', 'value')])
+def update_street_name(*args):
+        #Use the input for the selected street from the orientation of the current tab
+    *selected_streets, orientation = args
+    street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
+    if street[0] in ('Front', 'Richmond', 'Queen', 'Wellington', 'Dundas', 'Adelaide', 'Bathurst'):
+        main_name = street[0] + ' Street'
+    elif street[0] in ('Spadina', 'University')  :
+        main_name = street[0] + ' Avenue'  
+    return main_name
 
 def create_update_graph_div(graph_number):
     '''Dynamically create callback functions to update graphs based on a graph number
