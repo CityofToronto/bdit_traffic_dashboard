@@ -291,8 +291,10 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
 
     selected_filter = selected_data(filtered_daily, daterange_type, date_range_id)
 
-    base_line_data = filtered_daily[(filtered_daily['category'] == 'Baseline')]
-    pilot_data = filtered_daily[(filtered_daily['category'] == 'Closure')]
+    base_line_data = filtered_daily[(filtered_daily['category'] == 'Baseline')&
+                                ~(selected_filter)]
+    pilot_data = filtered_daily[(filtered_daily['category'] == 'Closure')&
+                                ~(selected_filter)]
 
     data_selected = filtered_daily[(selected_filter)]
 
@@ -492,16 +494,14 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                             marker=dict(color=PLOT_COLORS['baseline']),
                                             name='Baseline')
         data.append(baseline_data)
+    data_selected1 = generate_graph_data(selected_df.loc[selected_df['category']=='Closure'],
+                                             marker=dict(color =PLOT_COLORS['pilot'], line=dict(width=3, color='#f7ff00')), 
+                                             name='Selected')    
+    data.append(data_selected1)
 
-  
-    #if str(selected_df.category.item()) == 'Closure':
-    #    selected_colour = PLOT_COLORS['pilot']
-    #else:
-    #    selected_colour =  PLOT_COLORS['baseline']   
-
-    data_selected = generate_graph_data(selected_df,
-                                             marker=dict(color = 'White', opacity = 0,line=dict(width=3, color='#f7ff00')), 
-                                             name='Selected')
+    data_selected = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
+                                             marker=dict(color = PLOT_COLORS['baseline'], line=dict(width=3, color='#f7ff00')), 
+                                             name='Selected')                                        
     data.append(data_selected)
 
     annotations = [dict(x=-0.008,
@@ -523,7 +523,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     layout = dict(font={'family': FONT_FAMILY},
                   autosize=True,
                   height=225,
-                  barmode='overlay',
+                  barmode='relative',
                   xaxis=dict(title='Date',
                              tickformat = '%b %d',
                              nticks = tick_number,
