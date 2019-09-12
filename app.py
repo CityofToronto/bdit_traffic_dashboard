@@ -98,7 +98,7 @@ BASELINE_LINE = {'color': 'rgba(128, 128, 128, 0.7)',
 PLOT = dict(margin={'t':10, 'b': 40, 'r': 40, 'l': 40, 'pad': 8})
 PLOT_COLORS = dict(pilot='rgba(22, 87, 136, 100)',
                    baseline='rgba(128, 128, 128, 1.0)',
-                   selected='rgba(135, 71, 22, 1.0)')
+                   #selected='rgba(11, 45, 71, 1.0)')
 FONT_FAMILY = '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 # IDs for divs
@@ -493,9 +493,15 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                             marker=dict(color=PLOT_COLORS['baseline']),
                                             name='Baseline')
         data.append(baseline_data)
-    
+
+  
+    if str(selected_df.category.item()) == 'Closure':
+        selected_colour = PLOT_COLORS['pilot']
+    else:
+        selected_colour =  PLOT_COLORS['baseline']   
+
     data_selected = generate_graph_data(selected_df,
-                                              marker=dict(color=PLOT_COLORS['selected']),
+                                             marker=dict(color = selected_colour,line=dict(width=3, color='#e3fc03')), 
                                               name='Selected')
     data.append(data_selected)
 
@@ -524,8 +530,8 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                              nticks = tick_number,
                              fixedrange=True), #Prevents zoom
                   yaxis=dict(title='Travel Time (min)',
- #                            range=[0, MAX_TIME[orientation]],
-                             range = [0,30],
+                            range=[0, MAX_TIME[orientation]],
+ #                            range = [0,30],
                              tickmode = 'linear',
                              dtick =5,
                              fixedrange=True),
