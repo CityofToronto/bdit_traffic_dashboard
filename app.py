@@ -594,8 +594,7 @@ STREETS_LAYOUT = html.Div(children=[
         html.Button(id=CONTROLS['toggle'], children='Show Filters'),                 
     ],
     className='four columns'),
-    html.Div(children=[html.H2(id='streetss', style={'fontSize':30}),
-                        html.H2(id=TIMEPERIOD_DIV, style={'fontSize':20}),                     
+    html.Div(children=[html.H2(id='streetss', style={'fontSize':30}),                    
                         html.H2(id=STREETNAME_DIV[0], style={'fontSize':20}),
                         html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
                         html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
@@ -882,19 +881,34 @@ def create_update_street_name(dir_id):
 
 [create_update_street_name(i) for i in [0,1]]
 
-
 @app.callback(Output('streetss', 'children'),
                   [*[Input(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()],
-                   Input('tabs', 'value')])
+                   Input('tabs', 'value'),
+                   Input(CONTROLS['timeperiods'], 'value'),
+               Input(CONTROLS['day_types'], 'value')])
 def update_street_name(*args):
         #Use the input for the selected street from the orientation of the current tab
-    *selected_streets, orientation = args
+    *selected_streets, orientation, timeperiod, day_type = args
     street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
     if street[0] in ('Front', 'Richmond', 'Queen', 'Wellington', 'Dundas', 'Adelaide', 'Bathurst'):
         main_name = street[0] + ' Street'
-    elif street[0] in ('Spadina', 'University')  :
-        main_name = street[0] + ' Avenue'  
-    return main_name
+    elif street[0] in ('Spadina', 'University'):
+        main_name = street[0] + ' Avenue' 
+    time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
+    if time_range == '(07:00:00-10:00:00)':
+        time_range_pretty = '7AM to 10AM'
+    elif time_range == '(10:00:00-16:00:00)':
+        time_range_pretty = '10AM to 4PM'
+    elif time_range == '(16:00:00-19:00:00)':
+        time_range_pretty = '4PM to 7PM'
+    elif time_range == '(08:00:00-12:00:00)':
+        time_range_pretty = '8AM to 12 PM'       
+    elif time_range == '(12:00:00-17:00:00)':
+        time_range_pretty = '12PM to 5PM'
+    elif time_range == '(17:00:00-23:00:00)':
+        time_range_pretty == '5PM to 11PM'
+
+    return main_name +' (' +  day_type + ' ' + timeperiod + ' ' + time_range_pretty + ')'
 
 def create_update_graph_div(graph_number):
     '''Dynamically create callback functions to update graphs based on a graph number
@@ -937,15 +951,6 @@ def create_update_graph_div(graph_number):
     return update_graph
 
 [create_update_graph_div(i) for i in range(len(GRAPHS))]
-
-@app.callback(Output(TIMEPERIOD_DIV, 'children'),
-              [Input(CONTROLS['timeperiods'], 'value'),
-               Input(CONTROLS['day_types'], 'value')])
-def update_timeperiod(timeperiod, day_type):
-    '''Update sub title text based on selected time period and day type
-    '''
-    time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
-    return day_type + ' ' + timeperiod + ' ' + time_range
 
 if __name__ == '__main__':
     app.run_server(debug=True)
