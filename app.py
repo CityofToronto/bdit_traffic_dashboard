@@ -870,9 +870,16 @@ def create_update_street_name(dir_id):
         *selected_streets, orientation = args
         street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
         try:
+            
             from_to = BASELINE[(BASELINE['street'] == street[0]) &
                                (BASELINE['direction'] == DIRECTIONS[orientation][dir_id])][['from_intersection',
                                                                                'to_intersection']].iloc[0]
+            for n, i in enumerate(from_to):
+                if i in ('Yonge', 'Bathurst', 'Front', 'Dundas'):
+                    from_to[n] = from_to[n] + ' St'
+                elif i == 'Blue Jays':
+                    from_to[n] = 'Blue Jays Way'
+            
         except IndexError:
             return html.Div(className = 'nodata')
         else:
