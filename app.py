@@ -494,15 +494,17 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                             marker=dict(color=PLOT_COLORS['baseline']),
                                             name='Baseline')
         data.append(baseline_data)
-    data_selected1 = generate_graph_data(selected_df.loc[selected_df['category']=='Closure'],
+    
+    # Add style for selected data and append to data
+    selected_pilot = generate_graph_data(selected_df.loc[selected_df['category']=='Closure'],
                                              marker=dict(color =PLOT_COLORS['pilot'], line=dict(width=3, color='#f7ff00')), 
                                              name='Selected')    
-    data.append(data_selected1)
+    data.append(selected_pilot)
 
-    data_selected = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
+    selected_baseline = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
                                              marker=dict(color = PLOT_COLORS['baseline'], line=dict(width=3, color='#f7ff00')), 
                                              name='Selected')                                        
-    data.append(data_selected)
+    data.append(selected_baseline)
 
     annotations = [dict(x=-0.008,
                         y=base_line.iloc[0]['tt'] + 2,
