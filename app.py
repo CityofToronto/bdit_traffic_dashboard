@@ -910,6 +910,8 @@ def update_street_name(*args):
         time_range_pretty = '10AM to 4PM'
     elif time_range == '(16:00:00-19:00:00)':
         time_range_pretty = '4PM to 7PM'
+    elif time_range == '(19:00:00-23:00:00)':
+        time_range_pretty = '7PM to 11PM'    
     elif time_range == '(08:00:00-12:00:00)':
         time_range_pretty = '8AM to 12 PM'       
     elif time_range == '(12:00:00-17:00:00)':
