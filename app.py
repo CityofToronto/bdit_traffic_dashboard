@@ -97,8 +97,9 @@ BASELINE_LINE = {'color': 'rgba(128, 128, 128, 0.7)',
                  'width': 4}
 PLOT = dict(margin={'t':10, 'b': 40, 'r': 40, 'l': 40, 'pad': 8})
 PLOT_COLORS = dict(pilot='rgba(22, 87, 136, 100)',
-                   baseline='rgba(128, 128, 128, 1.0)',
-                   #selected='rgba(11, 45, 71, 1.0)')
+                   baseline='rgba(128, 128, 128, 1.0)'
+                   #selected='rgba(11, 45, 71, 1.0)'
+                   )
 FONT_FAMILY = '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
 # IDs for divs
@@ -290,10 +291,8 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
 
     selected_filter = selected_data(filtered_daily, daterange_type, date_range_id)
 
-    base_line_data = filtered_daily[(filtered_daily['category'] == 'Baseline') &
-                                ~(selected_filter)]
-    pilot_data = filtered_daily[(filtered_daily['category'] == 'Closure') &
-                                ~(selected_filter)]
+    base_line_data = filtered_daily[(filtered_daily['category'] == 'Baseline')]
+    pilot_data = filtered_daily[(filtered_daily['category'] == 'Closure')]
 
     data_selected = filtered_daily[(selected_filter)]
 
@@ -495,14 +494,14 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
         data.append(baseline_data)
 
   
-    if str(selected_df.category.item()) == 'Closure':
-        selected_colour = PLOT_COLORS['pilot']
-    else:
-        selected_colour =  PLOT_COLORS['baseline']   
+    #if str(selected_df.category.item()) == 'Closure':
+    #    selected_colour = PLOT_COLORS['pilot']
+    #else:
+    #    selected_colour =  PLOT_COLORS['baseline']   
 
     data_selected = generate_graph_data(selected_df,
-                                             marker=dict(color = selected_colour,line=dict(width=3, color='#e3fc03')), 
-                                              name='Selected')
+                                             marker=dict(color = 'White', opacity = 0,line=dict(width=3, color='#f7ff00')), 
+                                             name='Selected')
     data.append(data_selected)
 
     annotations = [dict(x=-0.008,
@@ -524,7 +523,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     layout = dict(font={'family': FONT_FAMILY},
                   autosize=True,
                   height=225,
-                  barmode='relative',
+                  barmode='overlay',
                   xaxis=dict(title='Date',
                              tickformat = '%b %d',
                              nticks = tick_number,
@@ -547,7 +546,7 @@ STREETS_LAYOUT = html.Div(children=[
     html.Div(children=[      
         html.Div(id=CONTROLS['div_id'],
                 children=[html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18}),
-                          html.H3('Step 1: Select the type of period (date, week, month)', style={'fontSize':16, 'marginTop': 10} ),
+                          html.H3('Step 1: Select the type of period', style={'fontSize':16, 'marginTop': 10} ),
                           html.Span(children=[
                                 html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
                                         options=[{'label': label,
@@ -556,6 +555,7 @@ STREETS_LAYOUT = html.Div(children=[
                                         value=0,
                                         clearable=False),
                                         title='Select a date range type to filter table data'),
+                                html.H3('Step 2: Select the date, week or month', style={'fontSize':16, 'marginTop': 10}),        
                                 html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
                                                     options=generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
                                                     value = 1,
@@ -573,7 +573,7 @@ STREETS_LAYOUT = html.Div(children=[
                                         id=CONTROLS['date_picker_span'],
                                         style={'display':'none'})
                                         ]),
-                            html.H3('Step 2: Select a date range type', style={'fontSize':16, 'marginTop': 15} ),         
+                            html.H3('Step 3: Select a date range type', style={'fontSize':16, 'marginTop': 15} ),         
                                 dcc.RadioItems(id=CONTROLS['day_types'],
                                                 options=[{'label': day_type,
                                                             'value': day_type}
@@ -583,7 +583,7 @@ STREETS_LAYOUT = html.Div(children=[
                                 dcc.RadioItems(id=CONTROLS['timeperiods'],
                                                 value=TIMEPERIODS.iloc[0]['period'],
                                                 className='radio-toolbar'),
-                            html.H3('Step 3: Click on different streets to display', style={'fontSize':16, 'marginTop': 15} ),                                                                             
+                            html.H3('Step 4: Click on different streets to display', style={'fontSize':16, 'marginTop': 15} ),                                                                             
                         ],
                         style={'display':'none'}),
         html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
@@ -603,11 +603,7 @@ STREETS_LAYOUT = html.Div(children=[
                         ],
                         className='eight columns')])
 
-app.layout = html.Div([html.Link(rel='stylesheet',
-                                 href='/assets/dashboard.css'),
-                       html.Link(rel='stylesheet',
-                                 href='/assets/style.css'),
-                       html.Div(children=[html.H1(children=TITLE, id='title')],
+app.layout = html.Div([html.Div(children=[html.H1(children=TITLE, id='title')],
                                 className='row twelve columns'),
                        html.Div(dcc.Tabs(children=[dcc.Tab(label='East-West Streets', value='ew'),
                                       dcc.Tab(label='North-South Streets', value='ns')],
