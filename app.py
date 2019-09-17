@@ -144,9 +144,10 @@ server = app.server
 
 # TODO: change this to the path where this will live on the EC2, this also 
 # needs to detect if it's operated in Heroku
-app.config.update({
-         'requests_pathname_prefix': '/richmond-watermain/',
- })
+if database_url is None:
+    app.config.update({
+             'requests_pathname_prefix': '/richmond-watermain/',
+     })
 
 # Something for heroku
 server.secret_key = os.environ.get('SECRET_KEY', 'my-secret-key')
