@@ -96,9 +96,9 @@ MAX_TIME = dict(ew=min(30, DATA[DATA['direction'].isin(DIRECTIONS['ew'])].tt.max
 BASELINE_LINE = {'color': 'rgba(128, 128, 128, 0.7)',
                  'width': 4}
 PLOT = dict(margin={'t':10, 'b': 40, 'r': 40, 'l': 40, 'pad': 8})
-PLOT_COLORS = dict(pilot='rgba(22, 87, 136, 100)',
-                   baseline='rgba(128, 128, 128, 1.0)'
-                   #selected='rgba(11, 45, 71, 1.0)'
+PLOT_COLORS = dict(pilot='#165788',
+                   baseline='#7f7e7e',
+                   selected='#ec9f09'
                    )
 FONT_FAMILY = '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif'
 
@@ -497,12 +497,12 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     
     # Add style for selected data and append to data
     selected_pilot = generate_graph_data(selected_df.loc[selected_df['category']=='Closure'],
-                                             marker=dict(color =PLOT_COLORS['pilot'], line=dict(width=3, color='#f7ff00')), 
+                                             marker=dict(color =PLOT_COLORS['pilot'], line=dict(width=3.5, color=PLOT_COLORS['selected'])), 
                                              name='Selected')    
     data.append(selected_pilot)
 
     selected_baseline = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
-                                             marker=dict(color = PLOT_COLORS['baseline'], line=dict(width=3, color='#f7ff00')), 
+                                             marker=dict(color = PLOT_COLORS['baseline'], line=dict(width=3.5, color=PLOT_COLORS['selected'])), 
                                              name='Selected')                                        
     data.append(selected_baseline)
 
@@ -548,7 +548,7 @@ STREETS_LAYOUT = html.Div(children=[
     html.Div(children=[      
         html.Div(id=CONTROLS['div_id'],
                 children=[html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18}),
-                          html.H3('Step 1: Select the type of period', style={'fontSize':16, 'marginTop': 10} ),
+                          html.H3('Step 1: Select the type of time period', style={'fontSize':16, 'marginTop': 10} ),
                           html.Span(children=[
                                 html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
                                         options=[{'label': label,
@@ -557,7 +557,8 @@ STREETS_LAYOUT = html.Div(children=[
                                         value=0,
                                         clearable=False),
                                         title='Select a date range type to filter table data'),
-                                html.H3('Step 2: Select the date, week or month', style={'fontSize':16, 'marginTop': 10}),        
+                                html.Span(children=[html.H3(id='step2', style={'fontSize':16, 'marginTop': 10} )]),         
+                                #html.H3('Step 2: Select the date, week or month', style={'fontSize':16, 'marginTop': 10}),        
                                 html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
                                                     options=generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
                                                     value = 1,
@@ -575,7 +576,7 @@ STREETS_LAYOUT = html.Div(children=[
                                         id=CONTROLS['date_picker_span'],
                                         style={'display':'none'})
                                         ]),
-                            html.H3('Step 3: Select a date range type', style={'fontSize':16, 'marginTop': 15} ),         
+                            html.H3('Step 3: Select a time of day period', style={'fontSize':16, 'marginTop': 15} ),         
                                 dcc.RadioItems(id=CONTROLS['day_types'],
                                                 options=[{'label': day_type,
                                                             'value': day_type}
@@ -585,7 +586,7 @@ STREETS_LAYOUT = html.Div(children=[
                                 dcc.RadioItems(id=CONTROLS['timeperiods'],
                                                 value=TIMEPERIODS.iloc[0]['period'],
                                                 className='radio-toolbar'),
-                            html.H3('Step 4: Click on different streets to display', style={'fontSize':16, 'marginTop': 15} ),                                                                             
+                            html.H3('Step 4: Select streets in the table to display trends', style={'fontSize':16, 'marginTop': 15} ),                                                                             
                         ],
                         style={'display':'none'}),
         html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
@@ -683,6 +684,19 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
         return [{'label': period, 'value': period}
                 for period
                 in TIMEPERIODS[TIMEPERIODS['day_type'] == day_type]['period']]
+
+
+@app.callback(Output('step2', 'children'), 
+              [Input(CONTROLS['date_picker'], 'date'),
+               Input(CONTROLS['day_types'], 'value'),
+               Input(CONTROLS['date_range_type'], 'value')]) 
+def generate_step_two(selected_date, day_type, daterange_type):
+    if DATERANGE_TYPES[daterange_type] == 'Select Date': 
+        return 'Step 2: Select the date'
+    elif DATERANGE_TYPES[daterange_type] == 'Select Week':
+        return 'Step 2: Select the week' 
+    elif DATERANGE_TYPES[daterange_type] == 'Select Month':
+        return 'Step 2: Select the month'                             
 
 @app.callback(Output(CONTROLS['timeperiods'], 'value'),
               [Input(CONTROLS['date_picker'], 'date'),
