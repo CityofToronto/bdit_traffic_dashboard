@@ -67,7 +67,7 @@ con.close()
 #                                                                                                 #
 ###################################################################################################
 
-TITLE = 'Richmond Watermain Closure - Travel Time Impact'
+TITLE = 'Richmond Watermain Replacement - Travel Time Impact'
 
 # Data management constants
 
@@ -423,15 +423,18 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
         try:
             day = filtered_data['date'].iloc[0].strftime('%a %b %d')
+            table_title = "Average Daily Travel Time (mins)"
         except IndexError:
             day = date_range_id.strftime('%a %b %d')
             LOGGER.warning(day + ' has no data')
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
+        table_title = "Average Weekly Travel Time (mins)"
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0].date()
         day = date_picked.strftime("%b '%y")
-        
+        table_title = "Average Monthly Travel Time (mins)"
+
     rows = []
     for baseline_row, street in zip(baseline.iterrows(), baseline['street'].values):
     # Generate a row for each street, keeping in mind the state (which row is clicked)
@@ -448,8 +451,9 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
         rows.append(row) 
     
 
-    return html.Table([html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], colSpan=2), html.Td(DIRECTIONS[orientation][1], colSpan=2)])] +
-                      [html.Tr([html.Td(""), html.Td(day), html.Td("Baseline"), html.Td(day), html.Td("Baseline")])] +
+    return html.Table([html.Tr([html.Td(""),html.Td(table_title, colSpan=4, className = 'title')])]+
+                      [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], colSpan=2), html.Td(DIRECTIONS[orientation][1], colSpan=2)])] +
+                      [html.Tr([html.Td(""), html.Td(day), html.Td("Baseline", className='baseline_title'), html.Td(day), html.Td("Baseline", className='baseline_title')])] +
                       rows, id='data_table')
 
 def generate_graph_data(data, **kwargs):
@@ -500,17 +504,17 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     # Add style for selected data and append to data
     selected_pilot = generate_graph_data(selected_df.loc[selected_df['category']=='Closure'],
                                              marker=dict(color =PLOT_COLORS['pilot'], line=dict(width=3.5, color=PLOT_COLORS['selected'])), 
-                                             name='Selected')    
+                                             name='Selected Closure')    
     data.append(selected_pilot)
 
     if DATERANGE_TYPES[daterange_type] == 'Select Date' or DATERANGE_TYPES[daterange_type] == 'Select Week':
         selected_baseline = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
                                                 marker=dict(color = PLOT_COLORS['baseline'], line=dict(width=3.5, color=PLOT_COLORS['selected'])), 
-                                                name='Selected')
+                                                name='Selected Baseline')
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         selected_baseline = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
                                                 marker=dict(color = PLOT_COLORS['baseline']), 
-                                                name='Selected')                                                                                    
+                                                name='Baseline')                                                                                    
     data.append(selected_baseline)
 
     annotations = [dict(x=-0.008,
@@ -539,14 +543,13 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                              fixedrange=True), #Prevents zoom
                   yaxis=dict(title='Travel Time (min)',
                             range=[0, MAX_TIME[orientation]],
- #                            range = [0,30],
                              tickmode = 'linear',
                              dtick =5,
                              fixedrange=True),
                   shapes=[line],
                   margin=PLOT['margin'],
                   annotations=annotations,
-                  legend={'orientation': "h", 'y': -0.21, 'x': 0.85}
+                  legend={'orientation': "h", 'y': -0.21, 'x': 0}
                   )
     return {'layout': layout, 'data': data}
                                           
