@@ -291,12 +291,14 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
 
     selected_filter = selected_data(filtered_daily, daterange_type, date_range_id)
 
+    
     base_line_data = filtered_daily[(filtered_daily['category'] == 'Baseline')&
-                                ~(selected_filter)]
-    pilot_data = filtered_daily[(filtered_daily['category'] == 'Closure')&
-                                ~(selected_filter)]
+                                    ~(selected_filter)]
 
     data_selected = filtered_daily[(selected_filter)]
+
+    pilot_data = filtered_daily[(filtered_daily['category'] == 'Closure')&
+                                ~(selected_filter)]
 
     return (base_line, base_line_data, pilot_data, data_selected)
 
@@ -501,9 +503,14 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                              name='Selected')    
     data.append(selected_pilot)
 
-    selected_baseline = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
-                                             marker=dict(color = PLOT_COLORS['baseline'], line=dict(width=3.5, color=PLOT_COLORS['selected'])), 
-                                             name='Selected')                                        
+    if DATERANGE_TYPES[daterange_type] == 'Select Date' or DATERANGE_TYPES[daterange_type] == 'Select Week':
+        selected_baseline = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
+                                                marker=dict(color = PLOT_COLORS['baseline'], line=dict(width=3.5, color=PLOT_COLORS['selected'])), 
+                                                name='Selected')
+    elif DATERANGE_TYPES[daterange_type] == 'Select Month':
+        selected_baseline = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
+                                                marker=dict(color = PLOT_COLORS['baseline']), 
+                                                name='Selected')                                                                                    
     data.append(selected_baseline)
 
     annotations = [dict(x=-0.008,
@@ -539,7 +546,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                   shapes=[line],
                   margin=PLOT['margin'],
                   annotations=annotations,
-                  legend={'xanchor':'right'}
+                  legend={'orientation': "h", 'y': -0.21, 'x': 0.85}
                   )
     return {'layout': layout, 'data': data}
                                           
@@ -547,7 +554,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
 STREETS_LAYOUT = html.Div(children=[
     html.Div(children=[      
         html.Div(id=CONTROLS['div_id'],
-                children=[html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18}),
+                children=[html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18, 'fontStyle':'bold'}),
                           html.H3('Step 1: Select the type of time period', style={'fontSize':16, 'marginTop': 10} ),
                           html.Span(children=[
                                 html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
@@ -892,7 +899,7 @@ def create_update_street_name(dir_id):
                                                                                'to_intersection']].iloc[0]
             for n, i in enumerate(from_to):
                 if i in ('Yonge', 'Bathurst', 'Front', 'Dundas'):
-                    from_to[n] = from_to[n] + ' St'
+                    from_to[n] = from_to[n] + ' St.'
                 elif i == 'Blue Jays':
                     from_to[n] = 'Blue Jays Way'
             
@@ -919,19 +926,19 @@ def update_street_name(*args):
         main_name = street[0] + ' Avenue' 
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
     if time_range == '(07:00:00-10:00:00)':
-        time_range_pretty = '7AM to 10AM'
+        time_range_pretty = '7 AM to 10 AM'
     elif time_range == '(10:00:00-16:00:00)':
-        time_range_pretty = '10AM to 4PM'
+        time_range_pretty = '10 AM to 4 PM'
     elif time_range == '(16:00:00-19:00:00)':
-        time_range_pretty = '4PM to 7PM'
+        time_range_pretty = '4 PM to 7 PM'
     elif time_range == '(19:00:00-23:00:00)':
-        time_range_pretty = '7PM to 11PM'    
+        time_range_pretty = '7 PM to 11 PM'    
     elif time_range == '(08:00:00-12:00:00)':
-        time_range_pretty = '8AM to 12 PM'       
+        time_range_pretty = '8 AM to 12 PM'       
     elif time_range == '(12:00:00-17:00:00)':
-        time_range_pretty = '12PM to 5PM'
+        time_range_pretty = '12 PM to 5 PM'
     elif time_range == '(17:00:00-23:00:00)':
-        time_range_pretty == '5PM to 11PM'
+        time_range_pretty = '5 PM to 11 PM'
 
     return main_name +' (' +  day_type + ' ' + timeperiod + ' ' + time_range_pretty + ')'
 
