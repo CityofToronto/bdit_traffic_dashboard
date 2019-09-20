@@ -8,18 +8,24 @@ The layout of the code is inspired by the Model-View-Controller paradigm, specif
 
 In addition to some of the plot styling being in these variables, [two css stylesheets](https://github.com/CityofToronto/bdit_traffic_dashboard/tree/master/assets) are loaded from local files.
 
-#### Detecting row clicks
+### Detecting row clicks
 
-Dash detects the number of clicks any html element has received. By storing all these in a "state" variable, one can compare previous and current state to determine which object was clicked. This is handled by the `row_click` function, which is fired when the number of clicks changes for any row (a Dash input), and also the previous state, and previously clicked row. Because [modifying global variables is **bad news** in Dash](https://plot.ly/dash/sharing-data-between-callbacks), these two states are serialized to json and stored in a hidden html div.
+This is handled by the `row_click` function, which is fired when the number of
+clicks changes for any row (a Dash input). Which street was clicked can be
+determined by the `dash.callback_context` (see ["**Q**: _How do I determine which Input has changed?_
+"](https://dash.plot.ly/faqs)). The selected street for each tab is stored
+in a hidden div, because [modifying global variables
+is **bad news** in Dash](https://plot.ly/dash/sharing-data-between-callbacks).
 
 When a row is clicked:
 
-1. the `row_click` function compares the current number of clicks for each row with the previous state and then labels the row for which this changed as "clicked". 
-2. the `row_click` function updates the `STATE_DIV_ID` with the number of clicks and the row which is clicked.
-3. this triggers updating the `SELECTED_STREET_DIV`
-4. which triggers updating the selected rows classes to add or remove the "selected" class.
+1. the `row_click` function determines the clicked street row from
+   `dash.callback_context` and updates the `SELECTED_STREET_DIV` for that tab
+2. which triggers updating the selected rows classes to add or remove the
+   "selected" class.
+3. which also triggers updating the graph.
 
-#### Creating multiple similar callbacks
+### Creating multiple similar callbacks
 
 Yes, you can put callback/function creation in a loop to iterate over, for example, every street. You just have to define an outer function that creates these callbacks, for example:
 
@@ -40,7 +46,7 @@ def create_row_click_function(streetname):
 [create_row_click_function(key) for key in INITIAL_STATE.keys()]
 ```
 
-### Data
+## Data
 
 Data from downtown Bluetooth detectors arrives in our database after initial filtering by bliptrack.
 
@@ -72,9 +78,36 @@ else:
     con = connect(**dbset)
 ```
 
+## Branching to monitor a new set of streets
+
+The following steps must be followed:
+
+1. Change the `'requests_pathname_prefix'` to something meaningful for the
+   dashboard if deploying on the EC2, this is the breadcrumb to access the
+   dashboard, e.g.: `/my_awesome_dashboard/`
+
 ## Deployment
 
-The app is currently deployed on Heroku by detecting updates to this branch and automatically rebuilding the app.
+### To Heroku
+
+The app is currently deployed on Heroku by detecting updates to this branch and
+automatically rebuilding the app.
+
+### On the EC2
+
+1. Clone the app with `git clone
+   git@github.com:CityofToronto/bdit_traffic_dashboard.git`
+2. Create a Python3 [virtual environment](https://docs.pipenv.org/en/latest/)
+   and install necessary packages with `pipenv --three install`
+3. Because we won't be able to access the running app on a specified port
+   through the corporate firewall, you
+   need to run it using a combination of `gunicorn` and `nginx`. Determine an
+   available port and fire up the app with
+   ```bash
+   GUNICORN_CMD_ARGS="--bind=0.0.0.0:PORT --log-level debug --timeout 90" gunicorn  app:server
+   ```
+4. Pass the `PORT` you selected to one of the `nginx` admins and they will
+   create a `location` for this app. 
 
 ### Data Syncing
 
