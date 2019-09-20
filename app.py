@@ -53,7 +53,6 @@ MONTHS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_month
                          ''', con, parse_dates=['month'])
 WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week'].astype(str)
 WEEKS.sort_values(by='week_number', inplace=True)
-#MONTHS['label'] = 'Month ' + MONTHS['month_number'].astype(str) + ': ' + MONTHS['month'].dt.strftime("%b '%y")
 MONTHS['label'] = MONTHS['month'].dt.strftime("%b '%y")
 
 
@@ -552,7 +551,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                   legend={'orientation': "h", 'y': -0.21, 'x': 0}
                   )
     return {'layout': layout, 'data': data}
-                                          
+                                       
 #Elements to include in the "main-"
 STREETS_LAYOUT = html.Div(children=[
     html.Div(children=[      
@@ -567,8 +566,7 @@ STREETS_LAYOUT = html.Div(children=[
                                         value=0,
                                         clearable=False),
                                         title='Select a date range type to filter table data'),
-                                html.Span(children=[html.H3(id='step2', style={'fontSize':16, 'marginTop': 10} )]),         
-                                #html.H3('Step 2: Select the date, week or month', style={'fontSize':16, 'marginTop': 10}),        
+                                html.Span(children=[html.H3(id='step2', style={'fontSize':16, 'marginTop': 10} )]),             
                                 html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
                                                     options=generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
                                                     value = 1,
@@ -592,10 +590,13 @@ STREETS_LAYOUT = html.Div(children=[
                                                             'value': day_type}
                                                         for day_type in TIMEPERIODS['day_type'].unique()],
                                                 value=TIMEPERIODS.iloc[0]['day_type'],
-                                                className='radio-toolbar'),   
+                                                className='radio-toolbar',
+                                                style={'display':' inline-block'}
+                                                ),   
                                 dcc.RadioItems(id=CONTROLS['timeperiods'],
                                                 value=TIMEPERIODS.iloc[0]['period'],
-                                                className='radio-toolbar'),
+                                                className = 'radio-toolbar',
+                                                style={'display':' inline-block'}),
                             html.H3('Step 4: Select streets in the table to display trends', style={'fontSize':16, 'marginTop': 15} ),                                                                             
                         ],
                         style={'display':'none'}),
@@ -833,6 +834,7 @@ def create_row_update_function(streetname, orientation):
             return generate_row_class(streetname == street[0])
         else:
             return generate_row_class(False)
+
     update_clicked_row.__name__ = 'update_row_'+streetname+'_'+orientation
     return update_clicked_row
 
@@ -900,12 +902,7 @@ def create_update_street_name(dir_id):
             from_to = BASELINE[(BASELINE['street'] == street[0]) &
                                (BASELINE['direction'] == DIRECTIONS[orientation][dir_id])][['from_intersection',
                                                                                'to_intersection']].iloc[0]
-            for n, i in enumerate(from_to):
-                if i in ('Yonge', 'Bathurst', 'Front', 'Dundas'):
-                    from_to[n] = from_to[n] + ' St.'
-                elif i == 'Blue Jays':
-                    from_to[n] = 'Blue Jays Way'
-            
+
         except IndexError:
             return html.Div(className = 'nodata')
         else:
@@ -928,22 +925,7 @@ def update_street_name(*args):
     elif street[0] in ('Spadina', 'University'):
         main_name = street[0] + ' Avenue' 
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
-    if time_range == '(07:00:00-10:00:00)':
-        time_range_pretty = '7 AM to 10 AM'
-    elif time_range == '(10:00:00-16:00:00)':
-        time_range_pretty = '10 AM to 4 PM'
-    elif time_range == '(16:00:00-19:00:00)':
-        time_range_pretty = '4 PM to 7 PM'
-    elif time_range == '(19:00:00-23:00:00)':
-        time_range_pretty = '7 PM to 11 PM'    
-    elif time_range == '(08:00:00-12:00:00)':
-        time_range_pretty = '8 AM to 12 PM'       
-    elif time_range == '(12:00:00-17:00:00)':
-        time_range_pretty = '12 PM to 5 PM'
-    elif time_range == '(17:00:00-23:00:00)':
-        time_range_pretty = '5 PM to 11 PM'
-
-    return main_name +' (' +  day_type + ' ' + timeperiod + ' ' + time_range_pretty + ')'
+    return main_name +' (' +  day_type + ' ' + timeperiod + ' ' + time_range + ')'
 
 def create_update_graph_div(graph_number):
     '''Dynamically create callback functions to update graphs based on a graph number
