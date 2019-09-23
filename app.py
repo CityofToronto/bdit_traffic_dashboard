@@ -40,7 +40,7 @@ DATA = pandasql.read_sql('''
                         when direction ='SB' then 'Southbound' end as direction, 
                         date, day_type, category, period, tt, most_recent, week_number, month_number from data_analysis.richmond_dash_daily
                          ''', con)
-BASELINE = pandasql.read_sql('''SELECT street, direction, from_intersection, to_intersection, 
+BASELINE = pandasql.read_sql('''SELECT street, street_suffix, direction, from_intersection, to_intersection, 
                              day_type, period, period_range, tt
                              FROM data_analysis.richmond_dash_baseline''',
                              con)
@@ -78,6 +78,8 @@ STREETS = OrderedDict(ew=['Dundas', 'Queen', 'Richmond', 'Adelaide', 'Wellington
 DIRECTIONS = OrderedDict(ew=['Eastbound', 'Westbound'],
                          ns=['Northbound', 'Southbound'])
 
+STREETS_SUFFIX = BASELINE[['street', 'street_suffix']].drop_duplicates()
+
 DATERANGE = [DATA['date'].min(), DATA['date'].max()]
 
 #Time periods for each day type, derived from the baseline dataframe
@@ -109,6 +111,8 @@ STREETNAME_DIV = ['street-name-'+str(i) for i in [0, 1]]
 SELECTED_STREET_DIVS = OrderedDict([(orientation, 'selected-street' + orientation) for orientation in STREETS])
 TABLE_DIV_ID = 'div-table'
 TIMEPERIOD_DIV = 'timeperiod'
+STEP2 = 'step2'
+STREET_TITLE = 'street-title'
 CONTROLS = dict(div_id='controls-div',
                 toggle='toggle-controls-button',
                 timeperiods='timeperiod-radio',
@@ -422,17 +426,17 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
         try:
             day = filtered_data['date'].iloc[0].strftime('%a %b %d')
-            table_title = "Average Daily Travel Time (mins)"
+        #    table_title = "Average Daily Travel Time (mins)"
         except IndexError:
             day = date_range_id.strftime('%a %b %d')
             LOGGER.warning(day + ' has no data')
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
-        table_title = "Average Weekly Travel Time (mins)"
+      #  table_title = "Average Weekly Travel Time (mins)"
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0].date()
         day = date_picked.strftime("%b '%y")
-        table_title = "Average Monthly Travel Time (mins)"
+     #   table_title = "Average Monthly Travel Time (mins)"
 
     rows = []
     for baseline_row, street in zip(baseline.iterrows(), baseline['street'].values):
@@ -450,7 +454,7 @@ def generate_table(state, day_type, period, orientation='ew', daterange_type=0, 
         rows.append(row) 
     
 
-    return html.Table([html.Tr([html.Td(""),html.Td(table_title, colSpan=4, className = 'title')])]+
+    return html.Table(#[html.Tr([html.Td(""),html.Td(table_title, colSpan=4, className = 'title')])]+
                       [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], colSpan=2), html.Td(DIRECTIONS[orientation][1], colSpan=2)])] +
                       [html.Tr([html.Td(""), html.Td(day), html.Td("Baseline", className='baseline_title'), html.Td(day), html.Td("Baseline", className='baseline_title')])] +
                       rows, id='data_table')
@@ -566,7 +570,7 @@ STREETS_LAYOUT = html.Div(children=[
                                         value=0,
                                         clearable=False),
                                         title='Select a date range type to filter table data'),
-                                html.Span(children=[html.H3(id='step2', style={'fontSize':16, 'marginTop': 10} )]),             
+                                html.Span(children=[html.H3(id=STEP2, style={'fontSize':16, 'marginTop': 10} )]),             
                                 html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
                                                     options=generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
                                                     value = 1,
@@ -608,7 +612,7 @@ STREETS_LAYOUT = html.Div(children=[
         html.Button(id=CONTROLS['toggle'], children='Show Filters'),                 
     ],
     className='four columns'),
-    html.Div(children=[html.H2(id='streetss', style={'fontSize':30}),                    
+    html.Div(children=[html.H2(id=STREET_TITLE, style={'fontSize':30}),                    
                         html.H2(id=STREETNAME_DIV[0], style={'fontSize':20}),
                         html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
                         html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
@@ -697,7 +701,7 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
                 in TIMEPERIODS[TIMEPERIODS['day_type'] == day_type]['period']]
 
 
-@app.callback(Output('step2', 'children'), 
+@app.callback(Output(STEP2, 'children'), 
               [Input(CONTROLS['date_picker'], 'date'),
                Input(CONTROLS['day_types'], 'value'),
                Input(CONTROLS['date_range_type'], 'value')]) 
@@ -897,8 +901,7 @@ def create_update_street_name(dir_id):
         #Use the input for the selected street from the orientation of the current tab
         *selected_streets, orientation = args
         street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
-        try:
-            
+        try:    
             from_to = BASELINE[(BASELINE['street'] == street[0]) &
                                (BASELINE['direction'] == DIRECTIONS[orientation][dir_id])][['from_intersection',
                                                                                'to_intersection']].iloc[0]
@@ -911,20 +914,18 @@ def create_update_street_name(dir_id):
 
 [create_update_street_name(i) for i in [0,1]]
 
-@app.callback(Output('streetss', 'children'),
+@app.callback(Output(STREET_TITLE, 'children'),
                   [*[Input(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()],
                    Input('tabs', 'value'),
                    Input(CONTROLS['timeperiods'], 'value'),
-               Input(CONTROLS['day_types'], 'value')])
+                   Input(CONTROLS['day_types'], 'value')])
 def update_street_name(*args):
         #Use the input for the selected street from the orientation of the current tab
     *selected_streets, orientation, timeperiod, day_type = args
     street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
-    if street[0] in ('Front', 'Richmond', 'Queen', 'Wellington', 'Dundas', 'Adelaide', 'Bathurst'):
-        main_name = street[0] + ' Street'
-    elif street[0] in ('Spadina', 'University'):
-        main_name = street[0] + ' Avenue' 
+    main_name = street[0] +  ' ' + STREETS_SUFFIX.loc[STREETS_SUFFIX['street']==street[0], 'street_suffix'].iloc[0]
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
+    
     return main_name +' (' +  day_type + ' ' + timeperiod + ' ' + time_range + ')'
 
 def create_update_graph_div(graph_number):
