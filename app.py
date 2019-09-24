@@ -40,9 +40,19 @@ DATA = pandasql.read_sql('''
                         date, day_type, category, period, tt, most_recent, week_number, month_number from data_analysis.richmond_dash_daily
                          ''', con)
 BASELINE = pandasql.read_sql('''SELECT street, street_suffix, direction, from_intersection, to_intersection, 
-                             day_type, period, period_range, tt
-                             FROM data_analysis.richmond_dash_baseline''',
-                             con)
+                             day_type, period,  CASE
+                            WHEN period_range::text = '[07:00:00,10:00:00)'::text THEN '7 AM to 10 AM'::text
+                            WHEN period_range::text = '[10:00:00,16:00:00)'::text THEN '10 AM to 4 PM'::text
+                            WHEN period_range::text = '[16:00:00,19:00:00)'::text THEN '4 PM to 7 PM'::text
+                            WHEN period_range::text = '[19:00:00,23:00:00)'::text THEN '7 PM to 11 PM'::text
+                            WHEN period_range::text = '[08:00:00,12:00:00)'::text THEN '8 AM to 12 PM'::text
+                            WHEN period_range::text = '[12:00:00,17:00:00)'::text THEN '12 PM to 5 PM'::text
+                            WHEN period_range::text = '[17:00:00,23:00:00)'::text THEN '5 PM to 11 PM'::text
+                            ELSE NULL::text
+                            END AS period_range, tt
+                            FROM data_analysis.richmond_dash_baseline
+                            order by richmond_dash_baseline.period_range''',
+                            con)
 HOLIDAY = pandasql.read_sql(''' SELECT dt FROM ref.holiday WHERE dt > '2019-07-02' ''', con, parse_dates=['dt',])
 
 # Numbering Weeks and Months for Dropdown Selectors
@@ -573,7 +583,7 @@ STREETS_LAYOUT = html.Div(children=[
                                                             show_outside_days=True),
                                         id=CONTROLS['date_picker_span'],
                                         style={'display':'none'})
-                                        ]),
+                                        ]),                                
                             html.H3('Step 3: Select a time of day period', style={'fontSize':16, 'marginTop': 15} ),         
                                 dcc.RadioItems(id=CONTROLS['day_types'],
                                                 options=[{'label': day_type,
