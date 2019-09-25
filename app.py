@@ -39,10 +39,13 @@ DATA = pandasql.read_sql('''
                         when direction ='SB' then 'Southbound' end as direction, 
                         date, day_type, category, period, tt, most_recent, week_number, month_number from data_analysis.richmond_dash_daily
                          ''', con)
-BASELINE = pandasql.read_sql('''SELECT street, street_suffix, direction, from_intersection, to_intersection, 
-                             day_type, period, period_range, tt
-                             FROM data_analysis.richmond_dash_baseline''',
-                             con)
+BASELINE = pandasql.read_sql('''select street, street_suffix, direction, from_intersection, to_intersection, 
+                             day_type, period, to_char(lower(period_range::TIMERANGE), 'FMHH A.M.')||' to '||to_char(upper(period_range::TIMERANGE), 'FMHH A.M.') as period_range , tt
+                             FROM data_analysis.richmond_dash_baseline
+                             order by richmond_dash_baseline.period_range
+
+                            ''',
+                            con)
 HOLIDAY = pandasql.read_sql(''' SELECT dt FROM ref.holiday WHERE dt > '2019-07-02' ''', con, parse_dates=['dt',])
 
 # Numbering Weeks and Months for Dropdown Selectors
@@ -82,7 +85,7 @@ STREETS_SUFFIX = BASELINE[['street', 'street_suffix']].drop_duplicates()
 DATERANGE = [DATA['date'].min(), DATA['date'].max()]
 
 #Time periods for each day type, derived from the baseline dataframe
-TIMEPERIODS = BASELINE[['day_type','period','period_range']].drop_duplicates().sort_values(['day_type', 'period_range'])
+TIMEPERIODS = BASELINE[['day_type','period','period_range']].drop_duplicates()
 
 # Threshold for changing the colour of cells in the table based on difference 
 # from the baseline in minutes
@@ -574,28 +577,23 @@ STREETS_LAYOUT = html.Div(children=[
                                                             show_outside_days=True),
                                         id=CONTROLS['date_picker_span'],
                                         style={'display':'none'})
-                                        ]),
+                                        ]),                                
                             html.H3('Step 3: Select a time of day period', style={'fontSize':16, 'marginTop': 15} ),         
                                 dcc.RadioItems(id=CONTROLS['day_types'],
                                                 options=[{'label': day_type,
                                                             'value': day_type}
                                                         for day_type in TIMEPERIODS['day_type'].unique()],
                                                 value=TIMEPERIODS.iloc[0]['day_type'],
-                                                className='radio-toolbar',
-                                                style={'display':' inline-block'}
-                                                ),   
+                                                className='radio-toolbar'),   
                                 dcc.RadioItems(id=CONTROLS['timeperiods'],
                                                 value=TIMEPERIODS.iloc[0]['period'],
-                                                className = 'radio-toolbar',
-                                                style={'display':' inline-block'}),
+                                                className = 'radio-toolbar'),
                             html.H3('Step 4: Select streets in the table to display trends', style={'fontSize':16, 'marginTop': 15} ),                                                                             
                         ],
                         style={'display':'none'}),
         html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
-        html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),
-                ' 1+ min', html.B(' longer'), ' than baseline']),
-        html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),
-                ' 1+ min', html.B(' shorter'), ' than baseline']), 
+        html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline']),
+        html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline']), 
         html.Button(id=CONTROLS['toggle'], children='Show Filters'),                 
     ],
     className='four columns'),
@@ -891,13 +889,11 @@ def create_update_graph_div(graph_number):
     @app.callback(Output(GRAPHDIVS[graph_number], 'children'),
                   [Input(CONTROLS['timeperiods'], 'value'),
                    Input(CONTROLS['day_types'], 'value'),
-                   Input(CONTROLS['date_range'], 'value'),
-                   Input(CONTROLS['date_range_type'], 'value'),
                    Input('tabs', 'value'),
-                   *[Input(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()]],
-                  [State(CONTROLS['date_range_type'], 'value'),
-                   State(CONTROLS['date_range'], 'value'),
-                   State(CONTROLS['date_picker'], 'date')])
+                   *[Input(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()],
+                   Input(CONTROLS['date_range_type'], 'value'),
+                   Input(CONTROLS['date_range'], 'value')],
+                  [State(CONTROLS['date_picker'], 'date')])
     def update_graph(period, day_type, orientation, *args):
         '''Update the graph for a street direction based on the selected:
          - street
