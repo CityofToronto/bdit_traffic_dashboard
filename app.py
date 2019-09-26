@@ -50,12 +50,12 @@ BASELINE = pandasql.read_sql('''select street, street_suffix, direction, from_in
 HOLIDAY = pandasql.read_sql(''' SELECT dt FROM ref.holiday WHERE dt > '2019-07-02' ''', con, parse_dates=['dt',])
 
 # Numbering Weeks and Months for Dropdown Selectors
-WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_weeks 
+WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_weeks order by week_number desc
                          ''', con)
-MONTHS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_months
+MONTHS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_months order by month_number desc
                          ''', con, parse_dates=['month'])
 WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week'].astype(str)
-WEEKS.sort_values(by='week_number', inplace=True)
+
 MONTHS['label'] = MONTHS['month'].dt.strftime("%b '%y")
 
 
@@ -325,6 +325,7 @@ def generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')):
 
     if DATERANGE_TYPES[daterange_type] == 'Select Week':
         # Weeks
+        LOGGER.debug(WEEKS.itertuples())
         return [{'label': row.label,
                  'value': row.week_number}
                 for row in WEEKS.itertuples()]
@@ -834,11 +835,13 @@ def generate_date_range_for_type(daterange_type):
               [State(CONTROLS['date_range'], 'value')])
 def update_date_range_value(daterange_type, date_range_id):
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
-        date_range_id
+        date_range_id        
     if not RANGES[daterange_type].empty and date_range_id <= len(RANGES[daterange_type]):
         return date_range_id
-    else:
-        return 1
+    elif  DATERANGE_TYPES[daterange_type] == 'Select Week':
+        return WEEKS['week_number'].iloc[0]    
+    elif  DATERANGE_TYPES[daterange_type] == 'Select Month':
+        return MONTHS['month_number'].iloc[0] 
 
 
 def create_row_update_function(streetname, orientation):
