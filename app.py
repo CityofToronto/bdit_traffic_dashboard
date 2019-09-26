@@ -116,6 +116,7 @@ TABLE_DIV_ID = 'div-table'
 TIMEPERIOD_DIV = 'timeperiod'
 STEP2 = 'step2'
 STREET_TITLE = 'street-title'
+TABLE_TITLE = 'table-title'
 TIME_TITLE = 'time-title'
 CONTROLS = dict(div_id='controls-div',
                 toggle='toggle-controls-button',
@@ -418,17 +419,14 @@ def generate_table(selected_street, day_type, period, orientation='ew', daterang
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
         try:
             day = filtered_data['date'].iloc[0].strftime('%a %b %d')
-        #    table_title = "Average Daily Travel Time (mins)"
         except IndexError:
             day = date_range_id.strftime('%a %b %d')
             LOGGER.warning(day + ' has no data')
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
-      #  table_title = "Average Weekly Travel Time (mins)"
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0].date()
         day = date_picked.strftime("%b '%y")
-     #   table_title = "Average Monthly Travel Time (mins)"
 
     rows = []
     for baseline_row, street in zip(baseline.iterrows(), baseline['street'].values):
@@ -446,7 +444,7 @@ def generate_table(selected_street, day_type, period, orientation='ew', daterang
         rows.append(row) 
     
 
-    return html.Table(#[html.Tr([html.Td(""),html.Td(table_title, colSpan=4, className = 'title')])]+
+    return html.Table(
                       [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], colSpan=2), html.Td(DIRECTIONS[orientation][1], colSpan=2)])] +
                       [html.Tr([html.Td(""), html.Td(day), html.Td("Baseline", className='baseline_title'), html.Td(day), html.Td("Baseline", className='baseline_title')])] +
                       rows, id='data_table')
@@ -606,6 +604,7 @@ STREETS_LAYOUT = html.Div(children=[
                         ]
                         ),
                     html.Div([    
+                            html.Div(id=TABLE_TITLE, style={'fontSize':16, 'marginTop': 10}),
                             html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
                             html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline']),
                             html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline']), 
@@ -719,17 +718,25 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
                 in TIMEPERIODS[TIMEPERIODS['day_type'] == day_type]['period']]
 
 
-@app.callback(Output(STEP2, 'children'), 
+@app.callback([Output(STEP2, 'children'),
+                Output(TABLE_TITLE, 'children')],
               [Input(CONTROLS['date_picker'], 'date'),
                Input(CONTROLS['day_types'], 'value'),
                Input(CONTROLS['date_range_type'], 'value')]) 
 def generate_step_two(selected_date, day_type, daterange_type):
     if DATERANGE_TYPES[daterange_type] == 'Select Date': 
-        return 'Step 2: Select the date'
+        step2 =  'Step 2: Select the date'
+        table_title = 'Average Daily Travel Time (mins)'
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
-        return 'Step 2: Select the week' 
+        step2 = 'Step 2: Select the week'
+        table_title = 'Average Weekly Travel Time (mins)' 
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
-        return 'Step 2: Select the month'                             
+        step2 = 'Step 2: Select the month'
+        table_title = 'Average Monthly Travel Time (mins)'
+
+    return step2, table_title
+
+
 
 @app.callback(Output(CONTROLS['timeperiods'], 'value'),
               [Input(CONTROLS['date_picker'], 'date'),
