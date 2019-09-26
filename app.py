@@ -41,7 +41,7 @@ DATA = pandasql.read_sql('''
                         date, day_type, category, period, tt, most_recent, week_number, month_number from data_analysis.richmond_dash_daily
                          ''', con)
 BASELINE = pandasql.read_sql('''select street, street_suffix, direction, from_intersection, to_intersection, 
-                             day_type, period, to_char(lower(period_range::TIMERANGE), 'FMHH A.M.')||' to '||to_char(upper(period_range::TIMERANGE), 'FMHH A.M.') as period_range , tt
+                             day_type, period, to_char(lower(period_range::TIMERANGE), 'FMHH AM')||' to '||to_char(upper(period_range::TIMERANGE), 'FMHH AM') as period_range , tt
                              FROM data_analysis.richmond_dash_baseline
                              order by richmond_dash_baseline.period_range
 
@@ -632,7 +632,7 @@ app.layout = html.Div([
                        html.Div(id=MAIN_DIV, children=[STREETS_LAYOUT])), width={"size":4, "order":1}, sm=12, xs=12, md=12, lg=4),
                     dbc.Col(html.Div(children=[
                                                 html.H2(id=STREET_TITLE, style={'fontSize':30}),
-                                                html.H2(id=TIME_TITLE, style={'fontSize':25}),                    
+                                                html.H2(id=TIME_TITLE, style={'fontSize':25}),                  
                                                 html.H2(id=STREETNAME_DIV[0], style={'fontSize':20}),
                                                 html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
                                                 html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
@@ -906,7 +906,7 @@ def create_update_street_name(dir_id):
 [create_update_street_name(i) for i in [0,1]]
 
 @app.callback([Output(STREET_TITLE, 'children'),
-                Output(TIME_TITLE, 'children')],
+                Output(TIME_TITLE, 'children')], 
                   [*[Input(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()],
                    Input('tabs', 'value'),
                    Input(CONTROLS['timeperiods'], 'value'),
@@ -917,8 +917,8 @@ def update_street_name(*args):
     street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
     main_name = street +  ' ' + STREETS_SUFFIX.loc[STREETS_SUFFIX['street']==street, 'street_suffix'].iloc[0]
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
-    time_range_title = day_type + ' ' + timeperiod + ' ' + time_range
-    return main_name + time_range_title
+    time_range_title = day_type + ' ' + timeperiod + ' (' + time_range + ')'
+    return main_name, time_range_title
 
 def create_update_graph_div(graph_number):
     '''Dynamically create callback functions to update graphs based on a graph number
