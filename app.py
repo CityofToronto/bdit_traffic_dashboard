@@ -653,7 +653,7 @@ app.layout = html.Div([
                     [dbc.Col(
                        (html.Footer(children=html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
-                                                         href="https://www1.toronto.ca/wps/portal/contentonly?vgnextoid=f98b551ed95ff410VgnVCM10000071d60f89RCRD")],
+                                                         href="https://www.toronto.ca/services-payments/streets-parking-transportation/road-safety/big-data-innovation-team/")],
                                                          style={'text-align':'right',
                                                                 'padding-right':'1em'}),
                                ),
