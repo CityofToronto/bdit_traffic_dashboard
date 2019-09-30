@@ -92,9 +92,9 @@ TIMEPERIODS = BASELINE[['day_type','period','period_range']].drop_duplicates()
 # from the baseline in minutes
 THRESHOLD = 1
 
-#Max travel time to fix y axis of graphs, based on the lowest of the max tt in the data or 20/30 for either tab
-MAX_TIME = dict(ew=min(30, DATA[DATA['direction'].isin(DIRECTIONS['ew'])].tt.max()),
-                ns=min(20, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
+#Max travel time to fix y axis of graphs, based on the highest of the max tt in the data or 20/30 for either tab
+MAX_TIME = dict(ew=max(30, DATA[DATA['direction'].isin(DIRECTIONS['ew'])].tt.max()),
+                ns=max(20, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
 
 # Plot appearance
 BASELINE_LINE = {'color': 'rgba(128, 128, 128, 0.7)',
@@ -104,7 +104,7 @@ PLOT_COLORS = dict(pilot='#165788',
                    baseline='#7f7e7e',
                    selected='#ec9f09'
                    )
-FONT_FAMILY = '"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif'
+FONT_FAMILY = 'Arial'
 
 # IDs for divs
 # These are defined as variables to make it easier to debug since a static 
@@ -552,22 +552,23 @@ STREETS_LAYOUT = html.Div(children=[
         html.Div(html.Button(id=CONTROLS['toggle'], children='Show Filters')),   
         html.Div(id=CONTROLS['div_id'],
                 children=[
-                    html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18, 'fontStyle':'bold'}),
+                    html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18, 'fontWeight':'bold'}),
                     html.Div(
                         children=[
                                 html.H3('Step 1: Select the type of time period', style={'fontSize':16, 'marginTop': 10} ),
-                                html.Span(dcc.Dropdown(id=CONTROLS['date_range_type'],
+                                html.Div(dcc.Dropdown(id=CONTROLS['date_range_type'],
                                         options=[{'label': label,
                                                 'value': value}
                                                 for value, label in enumerate(DATERANGE_TYPES)],
                                         value=0,
-                                        clearable=False),
+                                        clearable=False, 
+                                        style={'width': '200px'}),
                                         title='Select a date range type to filter table data')]),
                     html.Div(
                         children=[
                                 html.H3(id=STEP2, style={'fontSize':16, 'marginTop': 10} ),             
-                                html.Span(dcc.Dropdown(id=CONTROLS['date_range'],
-                                                    options=generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
+                                html.Div(dcc.Dropdown(id=CONTROLS['date_range'],
+                                                    options= generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
                                                     value = 1,
                                                     clearable=False),
                                         id=CONTROLS['date_range_span'],
@@ -582,7 +583,7 @@ STREETS_LAYOUT = html.Div(children=[
                                                             show_outside_days=True),
                                         id=CONTROLS['date_picker_span'],
                                         style={'display':'none'}),
-                                html.H3('Step 3: Select a time of day period', style={'fontSize':16, 'marginTop': 15} ),         
+                                html.H3('Step 3: Select a time of day period', style={'fontSize':16, 'marginTop': 10} ),         
                                         ]),
                     html.Div(                                                    
                             [dbc.RadioItems(id=CONTROLS['day_types'],
@@ -600,11 +601,11 @@ STREETS_LAYOUT = html.Div(children=[
                                             className="date-group-items", inline=True),   
                                         ] , className="p-3",
                             ),            
-                            html.H3('Step 4: Select streets in the table to display trends', style={'fontSize':16, 'marginTop': 15} ),                                                                             
+                            html.H3('Step 4: Select streets in the table to display trends', style={'fontSize':16, 'marginTop': 10} ),                                                                             
                         ]
                         ),
                     html.Div([    
-                            html.Div(id=TABLE_TITLE, style={'fontSize':16, 'marginTop': 10}),
+                            html.Div(id=TABLE_TITLE, style={'fontSize':16, 'marginTop': 5, 'fontWeight':'bold'}),
                             html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
                             html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline']),
                             html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline']), 
@@ -631,7 +632,7 @@ app.layout = html.Div([
                     dbc.Col((                    
                        html.Div(id=MAIN_DIV, children=[STREETS_LAYOUT])), width={"size":4, "order":1}, sm=12, xs=12, md=12, lg=4),
                     dbc.Col(html.Div(children=[
-                                                html.H2(id=STREET_TITLE, style={'fontSize':30}),
+                                                html.H2(id=STREET_TITLE, style={'fontSize':30, 'fontWeight':'bold'}),
                                                 html.H2(id=TIME_TITLE, style={'fontSize':25}),                  
                                                 html.H2(id=STREETNAME_DIV[0], style={'fontSize':20}),
                                                 html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
@@ -650,7 +651,7 @@ app.layout = html.Div([
                     ]),
                 dbc.Row(
                     [dbc.Col(
-                       (html.Div(children=html.H3(['Created by the ',
+                       (html.Footer(children=html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
                                                          href="https://www1.toronto.ca/wps/portal/contentonly?vgnextoid=f98b551ed95ff410VgnVCM10000071d60f89RCRD")],
                                                          style={'text-align':'right',
@@ -660,7 +661,9 @@ app.layout = html.Div([
                                   style={'display': 'none'},
                                   children=STREETS[orientation][0])
                          for orientation, div_id in SELECTED_STREET_DIVS.items()]), width=12)
-                     ])], fluid=True) 
+                     ])
+                
+                     ], fluid=True) 
                       ])
 
 ###################################################################################################
