@@ -1,3 +1,5 @@
+--SQL we used to read data from our rdb to dash in app.py
+
 --DATA
 SELECT street, case when direction = 'EB' then 'Eastbound'
                         when direction = 'WB' then 'Westbound'
