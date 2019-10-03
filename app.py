@@ -104,7 +104,7 @@ PLOT_COLORS = dict(pilot='#165788',
                    baseline='#7f7e7e',
                    selected='#ec9f09'
                    )
-FONT_FAMILY = 'Arial'
+FONT_FAMILY = '"Libre Franklin", sans-serif'
 
 # IDs for divs
 # These are defined as variables to make it easier to debug since a static 
