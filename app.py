@@ -608,7 +608,7 @@ STREETS_LAYOUT = html.Div(children=[
                                             className="date-group-items", inline=True),   
                                         ] , className="p-3",
                             ),            
-                            html.H3('Step 4: Select streets in the table to display trends', style={'fontSize':16, 'marginTop': 10} ),                                                                             
+                            html.H3('Step 4: Select streets in the table to display trends', style={'fontSize':16} ),                                                                             
                         ]
                         ),
                     html.Div([    

@@ -17,8 +17,9 @@
 .date-group-labels {
   border: 1px solid #ccc;
   border-radius: 0px;
-  font: bold 13px;
-  padding: 6px 8px;
+  font-size: 12.5px;
+  font-weight: bold;
+  padding: 2.5px 10px;
   margin-bottom: 5px;
   background-image: -webkit-linear-gradient(top, #fefefe, #f3f3f3);
   background-image: -moz-linear-gradient(top, #fefefe, #f3f3f3);
