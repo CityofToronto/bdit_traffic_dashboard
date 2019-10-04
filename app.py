@@ -548,6 +548,13 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     return {'layout': layout, 'data': data}
                                        
 #Elements to include in the "main-"
+LEGEND = html.Div(children = [html.Div(className="box_baseline", style={'display':'inline-block', 'margin-left':"30px"}),
+         html.Span("Baseline  ", style={'display':'inline-block', 'margin-left':"10px"}),
+         html.Div(className="box_closure", style={'display':'inline-block', 'margin-left':"20px"}),
+         html.Span("Closure  ", style={'display':'inline-block', 'margin-left':"10px"}), 
+         html.Div(className="box_selected", style={'display':'inline-block', 'margin-left':"20px"}),
+         html.Span("Selected  ", style={'display':'inline-block', 'margin-left':"10px"})])
+
 STREETS_LAYOUT = html.Div(children=[
         html.Div(html.Button(id=CONTROLS['toggle'], children='Show Filters')),   
         html.Div(id=CONTROLS['div_id'],
@@ -638,15 +645,8 @@ app.layout = html.Div([
                                                 html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
                                                 html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
                                                 html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1])),
-                            html.Div(children=[
-                                    html.Div(className="box_baseline", style={'display':'inline-block', 'margin-left':"30px"}),
-                                    html.Span("Baseline  ", style={'display':'inline-block', 'margin-left':"10px"}),
-                                    html.Div(className="box_closure", style={'display':'inline-block', 'margin-left':"20px"}),
-                                    html.Span("Closure  ", style={'display':'inline-block', 'margin-left':"10px"}), 
-                                    html.Div(className="box_selected", style={'display':'inline-block', 'margin-left':"20px"}),
-                                    html.Span("Selected  ", style={'display':'inline-block', 'margin-left':"10px"}),
-                    ])                     
-                            ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
+                                                html.Div(children=[LEGEND])                     
+                                                ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
        
                     ]),
                 dbc.Row(
