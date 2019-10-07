@@ -1,53 +1,71 @@
-.radio-toolbar input[type="radio"] {
-  opacity: 0;
-  width: 0;
-  height: 0;
+
+/* radiobutton styling*/
+
+.custom-control-label::after,
+.custom-control-label::before {
+  display: none;
 }
 
-.radio-toolbar input[type="radio"]:active ~ label {
-  opacity: 1;
-  line-height: 30px;
-  margin: 2px;
-  border: 2px solid black;
+.custom-control {
+  padding-left: 0;
 }
 
-.radio-toolbar input[type="radio"]:checked ~ label {
-  opacity: 1;
+.custom-control-inline {
+  margin-right: 0;
 }
 
-.radio-toolbar label {
-    opacity: 1;
-    line-height: 3em;
-    text-align: center;
-    padding-top: 1px;
-    padding-right: 13px;
-    padding-bottom: 1px;
-    padding-left: 5px;
-    display: inline-block;
-    margin: 2px;
-    border: 2px solid black;
-    font-size: smaller
+.date-group-labels {
+  border: 1px solid #ccc;
+  border-radius: 0px;
+  font-size: 12.5px;
+  font-weight: bold;
+  padding: 2.5px 10px;
+  margin-bottom: 5px;
+  background-image: -webkit-linear-gradient(top, #fefefe, #f3f3f3);
+  background-image: -moz-linear-gradient(top, #fefefe, #f3f3f3);
+  cursor: pointer;
 }
 
-.radio-toolbar input[type="radio"]:checked+label {
-  background-color: rgba(22, 87, 136, 0.76);
-  border: 2px solid black;
+.date-group-labels.date-group-labels-checked {
+  background-image: -webkit-linear-gradient(top, #eee, #e3e3e3);
+  background-image: -moz-linear-gradient(top, #eee, #e3e3e3);
+  box-shadow: inset 0px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.custom-radio:first-child .date-group-labels {
+  border-radius: 3px 0 0 3px;
+}
+
+.custom-radio:last-child .date-group-labels {
+  border-radius: 0 3px 3px 0;
+}
+
+.custom-radio:not(:last-child) .date-group-labels {
+  border-right: none;
+}
+
+.date-group-labels:hover {
+  box-shadow: inset 0px 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 
-.radio-toolbar label:hover {
-  background-color:  rgba(22, 87, 136, 0.5);
+/* legend box  */
+.box_selected{
+	width:15px;
+  height:15px;
+  background: #ffffff;
+  border:3px solid #ec9f09;
 }
-
-.radio-toolbar input[type="radio"]:checked+label {
-  background-color: rgba(22, 87, 136, 0.55);
-  border: 2px solid black;
+.box_baseline{
+	width:15px;
+  height:15px;
+  outline-width: 5px;
+  background:#7f7e7e;
 }
-
-#day-type-radio label {
-  background-color:  rgba(22, 87, 136, 0.25);
+.box_closure{
+	width:15px;
+  height:15px;
+  outline-width: 5px;
+  background: #165788;
 }
-
-#day-type-radio label:hover {
-  background-color:  rgba(22, 87, 136, 0.5);
-}
+ 

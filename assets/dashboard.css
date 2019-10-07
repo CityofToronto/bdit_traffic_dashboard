@@ -37,7 +37,7 @@
   position: relative;
   width: 100%;
   max-width: 960px;
-  margin: 0 auto;
+  margin: 20 auto;
   padding: 0 20px;
   box-sizing: border-box; }
 .column,
@@ -49,6 +49,7 @@
 /* Default font sizes - small */
 td {
   padding: 6px 10px;
+  width: 150px;
   text-align: center;
   border-bottom: 1px solid #E1E1E1;
   font-size: 1.2rem; }
@@ -73,8 +74,8 @@ td.same {
    font-size: 1.4rem; }
 
 .twelve.columns { background-color: #165788; }
-h1 { font-size: 2.0rem; line-height: 1.2; letter-spacing: -.1rem; margin-top: 0.6rem; margin-bottom: 0.6rem; margin-left: 0.6rem; color: #FFFFFF; font-weight: bold; }
-h2 { font-size: 1.6rem; line-height: 1.1; letter-spacing: -.1rem; margin-bottom: 0.4rem; margin-top: 0.4rem; margin-left: 0.6rem;}
+h1 { font-size: 2.0rem; line-height: 1.2; letter-spacing: -.1rem; margin-top: 0.6rem; margin-bottom: 0.6rem; margin-left: 0.6rem; color: #FFFFFF; font-weight: bold}
+h2 { font-size: 1.6rem; line-height: 1.1; letter-spacing: -.05rem; margin-bottom: 0.4rem; margin-top: 0.4rem; margin-left: 0.6rem;}
 
 .nodata { display: none;}
 
@@ -84,7 +85,7 @@ h2 { font-size: 1.6rem; line-height: 1.1; letter-spacing: -.1rem; margin-bottom:
     width: 85%;
     padding: 0; }
    h1 { font-size: 2.5rem; line-height: 1.3;  letter-spacing: -.1rem; margin-top: 0.8rem; margin-bottom: 0.8rem; margin-left: 0.8rem; color: #FFFFFF; font-weight: bold; }
-   h2 { font-size: 2.0rem; line-height: 1.1; letter-spacing: -.1rem; margin-bottom: 0.4rem; margin-top: 0.4rem; margin-left: 0.8rem;}
+   h2 { font-size: 2.0rem; line-height: 1.1; letter-spacing: -.05rem; margin-bottom: 0.4rem; margin-top: 0.4rem; margin-left: 0.8rem;}
    td {
      padding: 3px 10px;
      text-align: center;
@@ -133,7 +134,7 @@ h2 { font-size: 1.6rem; line-height: 1.1; letter-spacing: -.1rem; margin-bottom:
 /* For devices larger than 800px */
 @media (min-width: 1200px) {
    h1 { font-size: 3.5rem; line-height: 1.5;  letter-spacing: -.1rem; margin-top: 0.8rem; margin-bottom: 0.8rem; margin-left: 1.0rem; color: #FFFFFF; font-weight: bold;}
-   h2 { font-size: 2.5rem; line-height: 1.2; letter-spacing: -.1rem; margin-bottom: 0.4rem; margin-top: 0.4rem; margin-left: 1.0rem; }
+   h2 { font-size: 2.5rem; line-height: 1.2; letter-spacing: -.05rem; margin-bottom: 0.4rem; margin-top: 0.4rem; margin-left: 1.0rem; }
    td {
      font-size: 1.6rem; }
    td.segname {
@@ -220,7 +221,7 @@ body {
   font-size: 1.5em; /* currently ems cause chrome bug misinterpreting rems on body element */
   line-height: 1.6;
   font-weight: 400;
-  font-family: "Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: 'Libre Franklin', sans-serif;
   color: rgb(50, 50, 50); }
 
 
@@ -230,7 +231,7 @@ h3, h4, h5, h6 {
   margin-top: 0;
   margin-bottom: 0;
   font-weight: 300; }
-h3 { font-size: 1.3rem; line-height: 1.4;  letter-spacing: -.1rem; margin-bottom: 0.5rem; margin-top: 0.5rem;}
+h3 { font-size: 1.3rem; line-height: 1.4;  letter-spacing: -.05rem; margin-bottom: 0.5rem; margin-top: 0.5rem;}
 h4 { font-size: 1.1rem; line-height: 1.35; letter-spacing: -.08rem; margin-bottom: 0.5rem; margin-top: 0.5rem;}
 h5 { font-size: 0.9rem; line-height: 1.5;  letter-spacing: -.05rem; margin-bottom: 0.6rem; margin-top: 0.6rem;}
 h6 { font-size: 0.7rem; line-height: 1.6;  letter-spacing: 0; margin-bottom: 0.75rem; margin-top: 0.75rem;}
@@ -367,7 +368,6 @@ textarea:focus,
 select:focus {
   border: 1px solid #33C3F0;
   outline: 0; }
-label,
 legend {
   display: block;
   margin-bottom: 0px; }
@@ -412,11 +412,15 @@ tr {
    padding: 4px;
 }
 tr.notselected:hover {
-   outline: 2px solid black;
-   padding: 2px;
+   outline: 2px solid grey;
+   outline-offset: -2px;
+   padding: 0px;
+   padding-bottom: 2px;
 }
 tr.selected {
-   border: 4px solid black; }
+   outline: 4px solid black;
+   outline-offset: -4px;
+   padding-bottom: 2px; }
 tr.selected td:first-child {
    padding-left : 8px; }
 tr.selected td:last-child {
@@ -426,10 +430,9 @@ tr.notselected:hover td:first-child {
 tr.notselected:hover td:last-child {
    padding-right : 10px; }
 tr.notselected:hover td {
-   padding-bottom: 6px; }
-tr.notselected {
-   
-border: 0px solid black;}
+   padding-bottom: 2px;}  
+tr.notselected {   
+   outline: 2px solid transparent;}
 
 
 /* Spacing
