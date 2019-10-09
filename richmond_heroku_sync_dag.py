@@ -25,7 +25,7 @@ default_args = {'owner':'rdumas',
                       'heroku_rds':rds_con}
                 }
 
-with DAG('richmond_watermain_heroku',default_args=default_args, schedule_interval='@daily') as dag:
+with DAG('richmond_watermain_heroku',default_args=default_args, schedule_interval='0 7 * * *') as dag:
 
     restart_app = BashOperator(
                 task_id = 'restart_app',
