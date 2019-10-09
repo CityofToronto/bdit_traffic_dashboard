@@ -88,6 +88,10 @@ DATERANGE = [DATA['date'].min(), DATA['date'].max()]
 #Time periods for each day type, derived from the baseline dataframe
 TIMEPERIODS = BASELINE[['day_type','period','period_range']].drop_duplicates()
 
+#Find the most recent weekday as default value for select date
+DATA.date = pd.to_datetime(DATA.date)
+MOST_RECENT_WEEKDAY = DATA[DATA['date'].dt.weekday <5]['date'].max().date()
+
 # Threshold for changing the colour of cells in the table based on difference 
 # from the baseline in minutes
 THRESHOLD = 1
@@ -190,7 +194,7 @@ def pivot_order(df, orientation = 'ew', date_range_type=1):
     pivoted.street.cat.set_categories(STREETS[orientation], inplace=True)
     return pivoted.sort_values(['street']).round(1)
 
-def selected_data(data, daterange_type=0, date_range_id=DATERANGE[1]):
+def selected_data(data, daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     '''Returns a boolean column indicating whether the provided data was selected or not
     '''
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
@@ -201,7 +205,7 @@ def selected_data(data, daterange_type=0, date_range_id=DATERANGE[1]):
         date_filter = data['month_number'] == date_range_id
     return date_filter
 
-def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date_range_id=DATERANGE[1]):
+def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     '''Return data aggregated and filtered by period, day type, tab, date range
     '''
 
@@ -265,7 +269,7 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
     return [start_range, end_range]
 
 def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
-                      daterange_type=0, date_range_id=DATERANGE[1]):
+                      daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     '''Filter dataframes by street, direction, day_type, and period
     Returns a filtered baseline, and a filtered current dataframe
     '''
@@ -393,7 +397,7 @@ def generate_row(df_row, baseline_row, selected, orientation='ew'):
                    id=df_row['street'],
                    className=generate_row_class(selected))
 
-def generate_table(selected_street, day_type, period, orientation='ew', daterange_type=0, date_range_id=DATERANGE[1]):
+def generate_table(selected_street, day_type, period, orientation='ew', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     """Generate HTML table of streets and before-after values
 
         :param selected_street:
@@ -462,7 +466,7 @@ def generate_graph_data(data, **kwargs):
                 **kwargs)
 
 def generate_figure(street, direction, day_type='Weekday', period='AMPK',
-                    daterange_type=0, date_range_id=DATERANGE[1]):
+                    daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     '''Generate a Dash bar chart of average travel times by day
     '''
     base_line, base_df, after_df, selected_df = filter_graph_data(street,
@@ -585,7 +589,7 @@ STREETS_LAYOUT = html.Div(children=[
                                                             clearable=False,
                                                             min_date_allowed=DATERANGE[0],
                                                             max_date_allowed=DATERANGE[1],
-                                                            date=DATERANGE[1],
+                                                            date=MOST_RECENT_WEEKDAY,
                                                             display_format='MMM DD',
                                                             month_format='MMM',
                                                             show_outside_days=True),
