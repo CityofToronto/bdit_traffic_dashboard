@@ -86,6 +86,46 @@ The following steps must be followed:
    dashboard if deploying on the EC2, this is the breadcrumb to access the
    dashboard, e.g.: `/my_awesome_dashboard/`
 
+
+
+## Branching to use Streets as tabs
+
+Follow these steps:
+
+1. Prepare sql for data fetching
+   - Change street into `Main Street: from_intersection and to_intersection` for both `DATA` and `BASELINE`
+2. Change the following constants
+   - STREETS: Create arrays of all streets segments for each street 
+   ```python
+   STREETS = OrderedDict(dvp=['DVP: Bayview Ramp and Don Mill', 'DVP: Don Mills and Wynford'],
+                         gardiner=['Gardiner: Dufferin and Spadina', 'Gardiner: Grand and Dufferin'])
+   ```                      
+   - DIRECTIONS: Create arrays of directions for each street
+   ```python
+    DIRECTIONS = OrderedDict(dvp=['Northbound', 'Southbound'],
+                         gardiner=['Eastbound', 'Westbound'])
+   ```
+3. Change all default orientation in functions to the street of your choice
+   - `pivot_order`
+   - `filter_table_data`
+   - `generate_row`
+   - `generate_table`
+   - `update_table`
+   - in STREETS_LAYOUT: `INITIAL_STATE` in the last div 
+4. Add new tabs under children of dcc.tabs
+5. Change the following controllers
+   - in function `display_streets`, add new streets to return inline css
+6. Change parameter to filter data in function `filter_table_data`
+   - instead of using `DIRECTIONS`, use `STREETS` to filter data for both `filtered` and `filtered_base`
+   ```python
+   filtered = DATA[(DATA['period'] == period) &
+                    (DATA['day_type'] == day_type) &
+    ##change this   (DATA['direction'].isin(DIRECTIONS[orientation])) & 
+                    (DATA['street'].isin(STREETS[orientation])) & ## to this
+                    (DATA['category'] != 'Excluded') &
+                    (date_filter)]
+   ```
+
 ## Deployment
 
 ### To Heroku
