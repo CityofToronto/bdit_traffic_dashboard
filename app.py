@@ -34,26 +34,37 @@ else:
     con = connect(**dbset)
 
 DATA = pandasql.read_sql('''
-                         SELECT street, case when direction = 'EB' then 'Eastbound'
-                        when direction = 'WB' then 'Westbound'
-                        when direction = 'NB' then 'Northbound'
-                        when direction ='SB' then 'Southbound' end as direction, 
-                        date, day_type, category, period, tt, most_recent, week_number, month_number from data_analysis.richmond_dash_daily
-                         ''', con)
-BASELINE = pandasql.read_sql('''select street, street_suffix, direction, from_intersection, to_intersection, 
-                             day_type, period, to_char(lower(period_range::TIMERANGE), 'FMHH AM')||' to '||to_char(upper(period_range::TIMERANGE), 'FMHH AM') as period_range , tt
-                             FROM data_analysis.richmond_dash_baseline
-                             order by richmond_dash_baseline.period_range
-
+                         SELECT d.street as street_short, case when direction = 'EB' then 'Eastbound'
+                            when direction = 'WB' then 'Westbound'
+                            when direction = 'NB' then 'Northbound'
+                            when direction ='SB' then 'Southbound' 
+                            else direction end as direction, COALESCE(name1, d.street || ': ' || d.start_crossstreet || ' and ' || d.end_crossstreet) as street, 
+                            date, day_type, category, period, round(tt/60,2) as tt, most_recent, week_number, month_number 
+                            FROM data_analysis.gardiner_dash_daily_mat d		
+                            left join (SELECT DISTINCT ON (d1.street, d1.start_cross, d1.end_cross) d1.street, d1.start_cross, d1.end_cross, 
+                                        d1.street || ': ' || d1.start_cross || ' and ' || d1.end_cross as name1
+                                        FROM data_analysis.gardiner_segments d1, data_analysis.gardiner_segments d2 
+                                        WHERE d1.street = d2.street and d1.start_cross = d2.end_cross and d1.direction in ('NB', 'EB')
+                                        ORDER BY d1.street) n	
+                            ON n.street = d.street AND ( (n.start_cross = d.start_crossstreet AND n.end_cross = d.end_crossstreet) OR (n.start_cross = d.end_crossstreet AND n.end_cross = d.start_crossstreet)) 									
+                            order by d.street, d.direction, start_crossstreet ''', con)
+BASELINE = pandasql.read_sql('''SELECT COALESCE(name1, d.street || ': ' || d.from_intersection || ' and ' || d.to_intersection) as street, d.street as street_short,
+                                d.direction, from_intersection, to_intersection,day_type, period, to_char(lower(period_range::TIMERANGE), 'FMHH AM')||' to '||to_char(upper(period_range::TIMERANGE), 'FMHH AM') as period_range , tt
+                                FROM data_analysis.gardiner_dash_baseline_mat d 
+                                left join (SELECT DISTINCT ON (d1.street, d1.start_cross, d1.end_cross) d1.street, d1.start_cross, d1.end_cross, 
+                                                            d1.street || ': ' || d1.start_cross || ' and ' || d1.end_cross as name1
+                                                            FROM data_analysis.gardiner_segments d1, data_analysis.gardiner_segments d2 
+                                                            WHERE d1.street = d2.street and d1.start_cross = d2.end_cross and d1.direction in ('NB', 'EB')
+                                                            ORDER BY d1.street) n																																   
+                                ON n.street = d.street AND ( (n.start_cross = d.from_intersection AND n.end_cross = d.to_intersection) OR (n.start_cross = d.to_intersection AND n.end_cross = d.from_intersection)) 									
                             ''',
                             con)
 HOLIDAY = pandasql.read_sql(''' SELECT dt FROM ref.holiday WHERE dt > '2019-07-02' ''', con, parse_dates=['dt',])
 
 # Numbering Weeks and Months for Dropdown Selectors
-WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_weeks order by week_number desc
-                         ''', con)
-MONTHS = pandasql.read_sql('''SELECT * FROM data_analysis.richmond_closure_months order by month_number desc
-                         ''', con, parse_dates=['month'])
+WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.gardiner_weeks ''', con)
+MONTHS = pandasql.read_sql('''SELECT * FROM data_analysis.gardiner_months''', con, parse_dates=['month'])
+
 WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week'].astype(str)
 
 MONTHS['label'] = MONTHS['month'].dt.strftime("%b '%y")
@@ -69,19 +80,59 @@ con.close()
 #                                                                                                 #
 ###################################################################################################
 
-TITLE = 'Richmond Watermain Replacement - Travel Time Impact'
+TITLE = 'Gardiner Expressway Rehabilitation - Travel Time Impact'
 
 # Data management constants
 
 # Hard coded ordering of street names for displaying in the data table for each 
 # tab by the "orientation" of those streets. E.g. 'ew' for East-West
-STREETS = OrderedDict(ew=['Dundas', 'Queen', 'Richmond', 'Adelaide', 'Wellington', 'Front'],
-                      ns=['Bathurst', 'Spadina', 'University'])
+STREETS = OrderedDict(dvp=['DVP: Bayview Ramp and Don Mills','DVP: Don Mills and Wynford','DVP: Dundas and Bayview Ramp','DVP: Wynford and Lawrence',],
+                      gardiner=['Gardiner: Dufferin and Spadina',
+                                'Gardiner: Grand and Dufferin',
+                                'Gardiner: Grand and Ellis',
+                                'Gardiner: Roncesvalles and Dufferin',
+                                'Gardiner: Spadina and Dundas',],
+                      lakeshore=['Lakeshore: Don Roadway and Leslie',
+                                 'Lakeshore: Dufferin and Strachan',
+                                 'Lakeshore: Ellis and Dufferin',
+                                 'Lakeshore: Leslie and Coxwell',
+                                 'Lakeshore: Parliament and Don Roadway',
+                                 'Lakeshore: Parliament and Yonge',
+                                 'Lakeshore: Strachan and Bay',
+                                 'Lakeshore: Yonge and Spadina',
+                                 'Lakeshore: Yonge and Strachan',],
+                      are=['Adelaide: Bathurst and Spadina',
+                           'Adelaide: Spadina and University',
+                           'Adelaide: University and Yonge',
+                           'Adelaide: Yonge and Jarvis',
+                           'Richmond: Jarvis and Yonge',
+                           'Richmond: Spadina and Bathurst',
+                           'Richmond: University and Spadina',
+                           'Richmond: Yonge and University',
+                           'Eastern: Broadview and Leslie',
+                           'Eastern: Coxwell and Woodbine',
+                           'Eastern: Leslie and Coxwell',],
+                      queen=['Queen: Bathurst and Spadina',
+                             'Queen: Broadview and Greenwood',
+                             'Queen: Greenwood and Woodbine',
+                             'Queen: Jarvis and Parliament',
+                             'Queen: Parliament and Broadview',
+                             'Queen: Spadina and University',
+                             'Queen: Strachan and Bathurst',
+                             'Queen: University and Yonge',
+                             'Queen: Yonge and Jarvis',],
+                      front=['Front: Bathurst and Spadina','Front: Spadina and University','Front: University and Yonge','Front: Yonge and Jarvis',],
+                      wellington=['Wellington: University and Blue Jays','Wellington: Yonge and University'])
 # Directions assigned to each tab
-DIRECTIONS = OrderedDict(ew=['Eastbound', 'Westbound'],
-                         ns=['Northbound', 'Southbound'])
+DIRECTIONS = OrderedDict(dvp=['Northbound', 'Southbound'],
+                         gardiner=['Eastbound', 'Westbound'],
+                         queen=['Eastbound', 'Westbound'],
+                         are=['Eastbound', 'Westbound'],
+                         lakeshore=['Eastbound', 'Westbound'],
+                         front=['Eastbound', 'Westbound'],
+                         wellington=['Eastbound', 'Westbound'],)
 
-STREETS_SUFFIX = BASELINE[['street', 'street_suffix']].drop_duplicates()
+#STREETS_SUFFIX = BASELINE[['street', 'street_suffix']].drop_duplicates()
 
 DATERANGE = [DATA['date'].min(), DATA['date'].max()]
 
@@ -97,8 +148,8 @@ MOST_RECENT_WEEKDAY = DATA[DATA['date'].dt.weekday <5]['date'].max().date()
 THRESHOLD = 1
 
 #Max travel time to fix y axis of graphs, based on the highest of the max tt in the data or 20/30 for either tab
-MAX_TIME = dict(ew=max(30, DATA[DATA['direction'].isin(DIRECTIONS['ew'])].tt.max()),
-                ns=max(20, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
+#MAX_TIME = dict(ew=max(30, DATA[DATA['direction'].isin(DIRECTIONS['ew'])].tt.max()),
+#                ns=max(20, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
 
 # Plot appearance
 BASELINE_LINE = {'color': 'rgba(128, 128, 128, 0.7)',
@@ -178,7 +229,7 @@ LOGGER = logging.getLogger(__name__)
 #                                                                                                 #
 ###################################################################################################
 
-def pivot_order(df, orientation = 'ew', date_range_type=1):
+def pivot_order(df, orientation = 'dvp', date_range_type=1):
     '''Pivot the dataframe around street directions and order by STREETS global var
     '''
     if DATERANGE_TYPES[date_range_type] == 'Select Date' and     'date' in df.columns:
@@ -204,7 +255,7 @@ def selected_data(data, daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
         date_filter = data['month_number'] == date_range_id
     return date_filter
 
-def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
+def filter_table_data(period, day_type, orientation='dvp', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     '''Return data aggregated and filtered by period, day type, tab, date range
     '''
 
@@ -213,7 +264,7 @@ def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date
     #current data
     filtered = DATA[(DATA['period'] == period) &
                     (DATA['day_type'] == day_type) &
-                    (DATA['direction'].isin(DIRECTIONS[orientation])) &
+                    (DATA['street'].isin(STREETS[orientation])) &
                     (DATA['category'] != 'Excluded') &
                     (date_filter)]
     pivoted = pivot_order(filtered, orientation, daterange_type)
@@ -221,7 +272,7 @@ def filter_table_data(period, day_type, orientation='ew', daterange_type=0, date
     #baseline data
     filtered_base = BASELINE[(BASELINE['period'] == period) &
                              (BASELINE['day_type'] == day_type) &
-                             (BASELINE['direction'].isin(DIRECTIONS[orientation]))]
+                             (BASELINE['street'].isin(STREETS[orientation]))]
     pivoted_baseline = pivot_order(filtered_base, orientation)
 
     return (pivoted, pivoted_baseline)
@@ -370,7 +421,7 @@ def after_cell_class(before, after):
     else:
         return 'same'
 
-def generate_row(df_row, baseline_row, selected, orientation='ew'):
+def generate_row(df_row, baseline_row, selected, orientation='dvp'):
     """Create an HTML row from a database row (each street)
 
         :param df_row:
@@ -384,10 +435,13 @@ def generate_row(df_row, baseline_row, selected, orientation='ew'):
     data_cells = []
 
     for i in range(2):
-        baseline_val = baseline_row[DIRECTIONS[orientation][i]]
+        try:
+            baseline_val = baseline_row[DIRECTIONS[orientation][i]]
+        except KeyError:
+            baseline_val = nan 
         try:
             after_val =  df_row[DIRECTIONS[orientation][i]]
-        except TypeError:
+        except TypeError or KeyError:
             after_val = nan 
         data_cells.extend(generate_direction_cells(baseline_val, after_val))
 
@@ -396,7 +450,7 @@ def generate_row(df_row, baseline_row, selected, orientation='ew'):
                    id=df_row['street'],
                    className=generate_row_class(selected))
 
-def generate_table(selected_street, day_type, period, orientation='ew', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
+def generate_table(selected_street, day_type, period, orientation='dvp', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     """Generate HTML table of streets and before-after values
 
         :param selected_street:
@@ -540,7 +594,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                              fixedrange=True, #Prevents zoom
                              automargin=True), #Prevents axis title from overlapping axis
                   yaxis=dict(title='Travel Time (min)',
-                            range=[0, MAX_TIME[orientation]],
+                          #  range=[0, MAX_TIME[orientation]],
                              tickmode = 'linear',
                              dtick =5,
                              fixedrange=True),
@@ -617,7 +671,7 @@ STREETS_LAYOUT = html.Div(children=[
                         ),
                     html.Div([    
                             html.Div(id=TABLE_TITLE, style={'fontSize':16, 'marginTop': 5, 'fontWeight':'bold'}),
-                            html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['ew'], 'Weekday', 'AM Peak')),
+                            html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['dvp'], 'Weekday', 'AM Peak')),
                             html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline']),
                             html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline']), 
                                              
@@ -632,11 +686,18 @@ app.layout = html.Div([
             dbc.Row(
                 dbc.Col([html.Div(
                         dcc.Tabs(children=[
-                                    dcc.Tab(label='East-West Streets', value='ew'),
-                                    dcc.Tab(label='North-South Streets', value='ns')],
-                                    value='ew',
+                                    dcc.Tab(label='DVP', value='dvp',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Gardiner', value='gardiner',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Lakeshore', value='lakeshore',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Adelaide/Richmond/Eastern', value='are',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Front', value='front',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Queen', value='queen',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Wellington', value='wellington',className='custom-tab',selected_className='custom-tab--selected'),
+                                    ],
+                                    value='dvp',
                                     id='tabs',
-                                    style={'font-weight':'bold'}))], width=12)
+                                    #style={'font-weight':'bold'}
+                                    ))], width=12)
                     ),
             dbc.Container(
                 [dbc.Row([
@@ -680,9 +741,7 @@ app.layout = html.Div([
               [Input('tabs', 'value')])
 def display_streets(value):
     '''Switch tabs display while retaining frontend client-side'''
-    if value == 'ew':
-        return {'display':'inline'}
-    elif value == 'ns':
+    if value in ('dvp','gardiner','lakeshore','are','queen','front','wellington'):
         return {'display':'inline'}
     else:
         return {'display':'none'}
@@ -786,7 +845,7 @@ def update_day_type(date_picked, daterange_type, day_type):
                Input(CONTROLS['date_picker'], 'date'),
                Input('tabs', 'value')],
               [State(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()])
-def update_table(period, day_type, daterange_type, date_range_id, date_picked=datetime.today().date(), orientation='ew',  *state_data):
+def update_table(period, day_type, daterange_type, date_range_id, date_picked=datetime.today().date(), orientation='dvp',  *state_data):
     '''Generate HTML table of before-after travel times based on selected
     day type, time period, and remember which row was previously selected
     '''
@@ -932,7 +991,7 @@ def update_street_name(*args):
         #Use the input for the selected street from the orientation of the current tab
     *selected_streets, orientation, timeperiod, day_type = args
     street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
-    main_name = street +  ' ' + STREETS_SUFFIX.loc[STREETS_SUFFIX['street']==street, 'street_suffix'].iloc[0]
+    main_name = street +  ' ' #+ STREETS_SUFFIX.loc[STREETS_SUFFIX['street']==street, 'street_suffix'].iloc[0]
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
     time_range_title = day_type + ' ' + timeperiod + ' (' + time_range + ')'
     return main_name, time_range_title
