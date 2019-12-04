@@ -636,7 +636,9 @@ LEGEND = html.Div(children = [html.Div(className="box_baseline", style={'display
 
 STREETS_LAYOUT = html.Div(children=[
         html.Div(html.Button(id=CONTROLS['toggle'], children='Show Filters')),   
-        html.Div(id=CONTROLS['div_id'],
+        dbc.Card(dbc.CardBody([
+        html.Div(
+            id=CONTROLS['div_id'],
                 children=[
                     html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18, 'fontWeight':'bold'}),
                     html.Div(
@@ -697,6 +699,7 @@ STREETS_LAYOUT = html.Div(children=[
                             html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline']), 
                                              
                         ])
+                        ]), style={'height': '700px', 'overflow':'scroll'})
         ])                    
 
 app.layout = html.Div([
@@ -731,7 +734,8 @@ app.layout = html.Div([
                                                 html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
                                                 html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
                                                 html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1])),
-                                                html.Div(children=[LEGEND])                     
+                                                html.Div(children=[LEGEND]),
+                                                html.H3('Basline for ')                     
                                                 ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
        
                     ]),
