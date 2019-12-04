@@ -49,7 +49,7 @@
 /* Default font sizes - small */
 td {
   padding: 6px 10px;
-  width: 150px;
+  /* width: 150px; */
   text-align: center;
   border-bottom: 1px solid #E1E1E1;
   font-size: 1.2rem; }
