@@ -120,11 +120,54 @@ Follow these steps:
    ```python
    filtered = DATA[(DATA['period'] == period) &
                     (DATA['day_type'] == day_type) &
-    ##change this   (DATA['direction'].isin(DIRECTIONS[orientation])) & 
-                    (DATA['street'].isin(STREETS[orientation])) & ## to this
+     #change this   (DATA['direction'].isin(DIRECTIONS[orientation])) & 
+                    (DATA['street'].isin(STREETS[orientation])) & #to this
                     (DATA['category'] != 'Excluded') &
                     (date_filter)]
    ```
+7. Add a new return parameter for function `filter_graph_data` to obtain range for y axis
+    - filter max tt from data by selected street, period, day_type, and data range
+    ```python
+    max_tt = max(10, DATA[(DATA['street'] == street) &
+                          (DATA['period'] == period) &
+                          (DATA['day_type'] == day_type) & 
+                          (DATA['date'] >= daterange[0]) & 
+                          (DATA['date'] < daterange[1])
+                          ]['tt'].max()) 
+    ```
+    - retrieve max_tt from `generate_figure` function
+    ```python
+    base_line, base_df, after_df, selected_df, max_tt = filter_graph_data(street,
+                                                                          direction,
+                                                                          day_type,
+                                                                          period,
+                                                                          daterange_type,
+                                                                          date_range_id)
+
+    ```
+    - modify range with max_tt under layout in `generate_figure` function
+    ```python
+    layout = dict(font={'family': FONT_FAMILY},
+                  autosize=True,
+                  height=225,
+                  barmode='relative',
+                  xaxis=dict(title='Date',
+                             tickformat = '%b %d',
+                             nticks = tick_number,
+                             fixedrange=True, 
+                             automargin=True), axis
+                  yaxis=dict(title='Travel Time (min)',
+                             range=[0, max_tt], # modify max_tt
+                             tickmode = 'linear',
+                             dtick =5,
+                             fixedrange=True),
+                  shapes=[line],
+                  margin=PLOT['margin'],
+                  annotations=annotations,
+                  showlegend=False
+                  ) 
+    ```                                
+    *max_tt was originally obtain from getting the max tt of each direction: `DATA[DATA['direction'].isin(DIRECTIONS['ew'])].tt.max()`. But since we are including more segments with highly varying traffic condition, it doesn't make sense to use e.g. the maximum travel time of the super long segment on gardiner from Spadina to Dundas as a ymax for Adelaide from Bathurst to Spadina. 
 
 ## Deployment
 
