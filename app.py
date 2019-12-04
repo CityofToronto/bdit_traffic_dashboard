@@ -59,7 +59,7 @@ BASELINE = pandasql.read_sql('''SELECT COALESCE(name1, d.street || ': ' || d.fro
                                 ON n.street = d.street AND ( (n.start_cross = d.from_intersection AND n.end_cross = d.to_intersection) OR (n.start_cross = d.to_intersection AND n.end_cross = d.from_intersection)) 									
                             ''',
                             con)
-HOLIDAY = pandasql.read_sql(''' SELECT dt FROM ref.holiday WHERE dt > '2019-07-02' ''', con, parse_dates=['dt',])
+HOLIDAY = pandasql.read_sql(''' SELECT dt FROM ref.holiday WHERE dt >= '2019-08-01' ''', con, parse_dates=['dt',])
 
 # Numbering Weeks and Months for Dropdown Selectors
 WEEKS = pandasql.read_sql('''SELECT * FROM data_analysis.gardiner_weeks ''', con)
@@ -343,13 +343,19 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
                           (DATA['date'] >= daterange[0]) & 
                           (DATA['date'] < daterange[1])
                           ]
-
+    
     base_line = BASELINE[(BASELINE['street'] == street) &
                          (BASELINE['period'] == period) &
                          (BASELINE['day_type'] == day_type) &
                          (BASELINE['direction'] == direction)]
 
-    max_tt = max(10, filtered_daily['tt'].max()) 
+    
+    max_tt = max(10, DATA[(DATA['street'] == street) &
+                          (DATA['period'] == period) &
+                          (DATA['day_type'] == day_type) & 
+                          (DATA['date'] >= daterange[0]) & 
+                          (DATA['date'] < daterange[1])
+                          ]['tt'].max()) 
 
     selected_filter = selected_data(filtered_daily, daterange_type, date_range_id)
 
