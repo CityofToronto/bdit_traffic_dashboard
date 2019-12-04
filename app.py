@@ -710,7 +710,7 @@ app.layout = html.Div([
                                     dcc.Tab(label='DVP', value='dvp',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Gardiner', value='gardiner',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Lakeshore', value='lakeshore',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Adelaide/Richmond/Eastern', value='are',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Adelaide/ Richmond/ Eastern', value='are',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Front', value='front',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Queen', value='queen',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Wellington', value='wellington',className='custom-tab',selected_className='custom-tab--selected'),
