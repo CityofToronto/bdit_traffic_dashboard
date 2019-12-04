@@ -86,12 +86,15 @@ TITLE = 'Gardiner Expressway Rehabilitation - Travel Time Impact'
 
 # Hard coded ordering of street names for displaying in the data table for each 
 # tab by the "orientation" of those streets. E.g. 'ew' for East-West
-STREETS = OrderedDict(dvp=['DVP: Bayview Ramp and Don Mills','DVP: Don Mills and Wynford','DVP: Dundas and Bayview Ramp','DVP: Wynford and Lawrence',],
-                      gardiner=['Gardiner: Dufferin and Spadina',
+STREETS = OrderedDict(dvp=['DVP: Dundas and Bayview Ramp',
+                            'DVP: Bayview Ramp and Don Mills',
+                            'DVP: Don Mills and Wynford',
+                            'DVP: Wynford and Lawrence',],
+                      gardiner=['Gardiner: Roncesvalles and Dufferin',
+                                'Gardiner: Dufferin and Spadina',
+                                'Gardiner: Spadina and Dundas',
                                 'Gardiner: Grand and Dufferin',
-                                'Gardiner: Grand and Ellis',
-                                'Gardiner: Roncesvalles and Dufferin',
-                                'Gardiner: Spadina and Dundas',],
+                                'Gardiner: Grand and Ellis',],
                       lakeshore=['Lakeshore: Don Roadway and Leslie',
                                  'Lakeshore: Dufferin and Strachan',
                                  'Lakeshore: Ellis and Dufferin',
@@ -105,24 +108,27 @@ STREETS = OrderedDict(dvp=['DVP: Bayview Ramp and Don Mills','DVP: Don Mills and
                            'Adelaide: Spadina and University',
                            'Adelaide: University and Yonge',
                            'Adelaide: Yonge and Jarvis',
-                           'Richmond: Jarvis and Yonge',
                            'Richmond: Spadina and Bathurst',
                            'Richmond: University and Spadina',
                            'Richmond: Yonge and University',
+                           'Richmond: Jarvis and Yonge',
                            'Eastern: Broadview and Leslie',
-                           'Eastern: Coxwell and Woodbine',
-                           'Eastern: Leslie and Coxwell',],
-                      queen=['Queen: Bathurst and Spadina',
-                             'Queen: Broadview and Greenwood',
-                             'Queen: Greenwood and Woodbine',
+                           'Eastern: Leslie and Coxwell',
+                           'Eastern: Coxwell and Woodbine',],
+                      queen=['Queen: Strachan and Bathurst',
+                             'Queen: Bathurst and Spadina',
+                             'Queen: Spadina and University',
+                             'Queen: University and Yonge',
+                             'Queen: Yonge and Jarvis',
                              'Queen: Jarvis and Parliament',
                              'Queen: Parliament and Broadview',
-                             'Queen: Spadina and University',
-                             'Queen: Strachan and Bathurst',
-                             'Queen: University and Yonge',
-                             'Queen: Yonge and Jarvis',],
-                      front=['Front: Bathurst and Spadina','Front: Spadina and University','Front: University and Yonge','Front: Yonge and Jarvis',],
-                      wellington=['Wellington: University and Blue Jays','Wellington: Yonge and University'])
+                             'Queen: Broadview and Greenwood',
+                             'Queen: Greenwood and Woodbine',],
+                      front=['Front: Bathurst and Spadina',
+                             'Front: Spadina and University',
+                             'Front: University and Yonge',
+                             'Front: Yonge and Jarvis'],
+                      wellington=['Wellington: Yonge and University','Wellington: University and Blue Jays'])
 # Directions assigned to each tab
 DIRECTIONS = OrderedDict(dvp=['Northbound', 'Southbound'],
                          gardiner=['Eastbound', 'Westbound'],
@@ -148,8 +154,13 @@ MOST_RECENT_WEEKDAY = DATA[DATA['date'].dt.weekday <5]['date'].max().date()
 THRESHOLD = 1
 
 #Max travel time to fix y axis of graphs, based on the highest of the max tt in the data or 20/30 for either tab
-#MAX_TIME = dict(ew=max(30, DATA[DATA['direction'].isin(DIRECTIONS['ew'])].tt.max()),
-#                ns=max(20, DATA[DATA['direction'].isin(DIRECTIONS['ns'])].tt.max())) 
+MAX_TIME = dict(dvp=max(5,DATA[DATA['street'].isin(STREETS['dvp'])].tt.max()),
+                gardiner=max(5,DATA[DATA['street'].isin(STREETS['gardiner'])].tt.max()),
+                queen=max(5,DATA[DATA['street'].isin(STREETS['queen'])].tt.max()),
+                are=max(5,DATA[DATA['street'].isin(STREETS['are'])].tt.max()),
+                lakeshore=max(5,DATA[DATA['street'].isin(STREETS['lakeshore'])].tt.max()),
+                front=max(5,DATA[DATA['street'].isin(STREETS['front'])].tt.max()),
+                wellington=max(5,DATA[DATA['street'].isin(STREETS['wellington'])].tt.max())) 
 
 # Plot appearance
 BASELINE_LINE = {'color': 'rgba(128, 128, 128, 0.7)',
@@ -266,7 +277,7 @@ def filter_table_data(period, day_type, orientation='dvp', daterange_type=0, dat
                     (DATA['day_type'] == day_type) &
                     (DATA['street'].isin(STREETS[orientation])) &
                     (DATA['category'] != 'Excluded') &
-                    (date_filter)]
+                    (date_filter)]              
     pivoted = pivot_order(filtered, orientation, daterange_type)
         
     #baseline data
@@ -338,10 +349,10 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
                          (BASELINE['day_type'] == day_type) &
                          (BASELINE['direction'] == direction)]
 
+    max_tt = max(10, filtered_daily['tt'].max()) 
 
     selected_filter = selected_data(filtered_daily, daterange_type, date_range_id)
 
-    
     base_line_data = filtered_daily[(filtered_daily['category'] == 'Baseline')&
                                     ~(selected_filter)]
 
@@ -350,7 +361,7 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
     pilot_data = filtered_daily[(filtered_daily['category'] == 'Closure')&
                                 ~(selected_filter)]
 
-    return (base_line, base_line_data, pilot_data, data_selected)
+    return (base_line, base_line_data, pilot_data, data_selected, max_tt)
 
 def get_orientation_from_dir(direction):
     '''Get the orientation of the street based on its direction'''
@@ -441,7 +452,7 @@ def generate_row(df_row, baseline_row, selected, orientation='dvp'):
             baseline_val = nan 
         try:
             after_val =  df_row[DIRECTIONS[orientation][i]]
-        except TypeError or KeyError:
+        except KeyError or TypeError:
             after_val = nan 
         data_cells.extend(generate_direction_cells(baseline_val, after_val))
 
@@ -522,12 +533,12 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                     daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     '''Generate a Dash bar chart of average travel times by day
     '''
-    base_line, base_df, after_df, selected_df = filter_graph_data(street,
-                                                                  direction,
-                                                                  day_type,
-                                                                  period,
-                                                                  daterange_type,
-                                                                  date_range_id)
+    base_line, base_df, after_df, selected_df, max_tt = filter_graph_data(street,
+                                                                          direction,
+                                                                          day_type,
+                                                                          period,
+                                                                          daterange_type,
+                                                                          date_range_id)
 
     orientation = get_orientation_from_dir(direction)
     data = []
@@ -544,6 +555,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
         pilot_data = generate_graph_data(after_df,
                                      marker=dict(color=PLOT_COLORS['pilot']),
                                      name='Closure')
+                                         
         data.append(pilot_data)
 
     if not base_df.empty:
@@ -551,7 +563,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                             marker=dict(color=PLOT_COLORS['baseline']),
                                             name='Baseline')
         data.append(baseline_data)
-    
+
     # Add style for selected data and append to data
     selected_pilot = generate_graph_data(selected_df.loc[selected_df['category']=='Closure'],
                                              marker=dict(color =PLOT_COLORS['pilot'], line=dict(width=3.5, color=PLOT_COLORS['selected'])), 
@@ -567,7 +579,6 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                                 marker=dict(color = PLOT_COLORS['baseline']), 
                                                 name='Baseline')                                                                                    
     data.append(selected_baseline)
-
     annotations = [dict(x=-0.008,
                         y=base_line.iloc[0]['tt'] + 2,
                         text='Baseline',
@@ -594,7 +605,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                              fixedrange=True, #Prevents zoom
                              automargin=True), #Prevents axis title from overlapping axis
                   yaxis=dict(title='Travel Time (min)',
-                          #  range=[0, MAX_TIME[orientation]],
+                             range=[0, max_tt],
                              tickmode = 'linear',
                              dtick =5,
                              fixedrange=True),
@@ -603,6 +614,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                   annotations=annotations,
                   showlegend=False
                   )
+       
     return {'layout': layout, 'data': data}
                                        
 #Elements to include in the "main-"
