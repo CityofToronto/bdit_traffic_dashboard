@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import numpy as np
 from collections import OrderedDict
 from datetime import datetime, date
 import dash
@@ -563,30 +564,30 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
     else:
         pilot_data = generate_graph_data(after_df,
                                      marker=dict(color=PLOT_COLORS['pilot']),
-                                     name='Closure')
+                                     name='Closure',showlegend=False)
                                          
         data.append(pilot_data)
 
     if not base_df.empty:
         baseline_data = generate_graph_data(base_df,
                                             marker=dict(color=PLOT_COLORS['baseline']),
-                                            name='Baseline')
+                                            name='Baseline',showlegend=False)
         data.append(baseline_data)
 
     # Add style for selected data and append to data
     selected_pilot = generate_graph_data(selected_df.loc[selected_df['category']=='Closure'],
                                              marker=dict(color =PLOT_COLORS['pilot'], line=dict(width=3.5, color=PLOT_COLORS['selected'])), 
-                                             name='Selected Closure')    
+                                             name='Selected Closure',showlegend=False)    
     data.append(selected_pilot)
 
     if DATERANGE_TYPES[daterange_type] == 'Select Date' or DATERANGE_TYPES[daterange_type] == 'Select Week':
         selected_baseline = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
                                                 marker=dict(color = PLOT_COLORS['baseline'], line=dict(width=3.5, color=PLOT_COLORS['selected'])), 
-                                                name='Selected Baseline')
+                                                name='Selected Baseline',showlegend=False)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         selected_baseline = generate_graph_data(selected_df.loc[selected_df['category']=='Baseline'],
                                                 marker=dict(color = PLOT_COLORS['baseline']), 
-                                                name='Baseline')                                                                                    
+                                                name='Baseline',showlegend=False)                                                                                    
     data.append(selected_baseline)
     annotations = [dict(x=-0.008,
                         y=base_line.iloc[0]['tt'] + 2,
@@ -596,14 +597,30 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                         yref='yaxis',
                         showarrow=False
                         )]
-    line = {'type':'line',
-            'x0': 0,
-            'x1': 1,
-            'xref': 'paper',
-            'y0': base_line.iloc[0]['tt'],
-            'y1': base_line.iloc[0]['tt'],
-            'line': BASELINE_LINE
-            }
+
+    line = [go.layout.Shape(type="line",
+                                visible=True,
+                                layer= 'above',
+                                x0= 0,
+                                x1= 1,
+                                xref= 'paper',
+                                y0= base_line.iloc[0]['tt'],
+                                y1= base_line.iloc[0]['tt'],
+                                line= BASELINE_LINE,)]
+    
+    updatemenus=[
+            go.layout.Updatemenu(
+                type="buttons",
+                buttons=[
+                    dict(label="None",
+                        method="relayout",
+                        args=["shapes", []]),
+                    dict(label="Baseline",
+                        method="relayout",
+                        args=["shapes", line])
+                        ]
+                        )]
+
     layout = dict(font={'family': FONT_FAMILY},
                   autosize=True,
                   height=225,
@@ -618,10 +635,10 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                              tickmode = 'linear',
                              dtick =5,
                              fixedrange=True),
-                  shapes=[line],
+                  shapes= [line],
                   margin=PLOT['margin'],
                   annotations=annotations,
-                  showlegend=False
+                  showlegend=True,updatemenus=updatemenus
                   )
        
     return {'layout': layout, 'data': data}
@@ -1052,10 +1069,21 @@ def create_update_graph_div(graph_number):
                                  day_type=day_type,
                                  daterange_type=daterange_type,
                                  date_range_id=date_range)
+
+                                
         if figure: 
             return html.Div(dcc.Graph(id = GRAPHS[graph_number],
                                       figure = figure,
-                                      config={'displayModeBar': False}))
+                                      config={'modeBarButtonsToRemove': ['sendDataToCloud','scrollZoom'
+                                                                        'zoomIn2d',
+                                                                        'zoomOut2d',
+                                                                        'hoverClosestCartesian',
+                                                                        'hoverCompareCartesian',
+                                                                        'hoverClosest3d',
+                                                                        'hoverClosestGeo',
+                                                                        'resetScale2d',
+                                                                        'lasso2d','toggleSpikelines','select2d','displaylogo']}
+                                                                        ))
         else:
             return html.Div(className = 'nodata')
 
