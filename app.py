@@ -1068,16 +1068,7 @@ def create_update_graph_div(graph_number):
         if figure: 
             return html.Div(dcc.Graph(id = GRAPHS[graph_number],
                                       figure = figure,
-                                      config={'displaylogo':False,
-                                              'modeBarButtonsToRemove': ['sendDataToCloud','scrollZoom'
-                                                                        'zoomIn2d',
-                                                                        'zoomOut2d',
-                                                                        'hoverClosestCartesian',
-                                                                        'hoverCompareCartesian',
-                                                                        'hoverClosest3d',
-                                                                        'hoverClosestGeo',
-                                                                        'resetScale2d',
-                                                                        'lasso2d','toggleSpikelines','select2d','displaylogo']}
+                                      config={'displayModeBar': False}
                                                                         ))
         else:
             return html.Div(className = 'nodata')
