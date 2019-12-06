@@ -645,7 +645,6 @@ LEGEND = html.Div(children = [html.Div(className="box_baseline", style={'display
 
 STREETS_LAYOUT = html.Div(children=[
         html.Div(html.Button(id=CONTROLS['toggle'], children='Show Filters')),   
-        dbc.Card(dbc.CardBody([
         html.Div(
             id=CONTROLS['div_id'],
                 children=[
@@ -707,8 +706,7 @@ STREETS_LAYOUT = html.Div(children=[
                             html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline']),
                             html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline']), 
                                              
-                        ])
-                        ]), style={'height': '700px', 'overflow':'scroll'})
+                    ])
         ])                    
 
 app.layout = html.Div([
