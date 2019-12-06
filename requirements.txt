@@ -2,7 +2,7 @@ dash==1.0.1
 dash-core-components==1.0.0
 dash-html-components==1.0.0
 dash-renderer==1.0.0
-plotly==3.7.0
+plotly==4.3.0
 python-dateutil
 psycopg2
 gunicorn
