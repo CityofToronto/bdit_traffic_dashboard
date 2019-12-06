@@ -194,6 +194,7 @@ TABLE_TITLE = 'table-title'
 TIME_TITLE = 'time-title'
 CONTROLS = dict(div_id='controls-div',
                 toggle='toggle-controls-button',
+                baseline_toggle='baseline-toggle',
                 timeperiods='timeperiod-radio',
                 day_types='day-type-radio',
                 date_range_type='date-range-types',
@@ -349,15 +350,13 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
                           (DATA['day_type'] == day_type) &
                           (DATA['direction'] == direction) & 
                           (DATA['date'] >= daterange[0]) & 
-                          (DATA['date'] < daterange[1])
-                          ]
+                          (DATA['date'] < daterange[1])]
     
     base_line = BASELINE[(BASELINE['street'] == street) &
                          (BASELINE['period'] == period) &
                          (BASELINE['day_type'] == day_type) &
                          (BASELINE['direction'] == direction)]
 
-    
     max_tt = max(10, DATA[(DATA['street'] == street) &
                           (DATA['period'] == period) &
                           (DATA['day_type'] == day_type) & 
@@ -544,7 +543,7 @@ def generate_graph_data(data, **kwargs):
                 **kwargs)
 
 def generate_figure(street, direction, day_type='Weekday', period='AMPK',
-                    daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
+                    daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY, baseline_state=1):
     '''Generate a Dash bar chart of average travel times by day
     '''
     base_line, base_df, after_df, selected_df, max_tt = filter_graph_data(street,
@@ -602,37 +601,53 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                         showarrow=False
                         )]
 
-    line = [go.layout.Shape(type="line",
-                                visible=True,
-                                layer= 'above',
-                                x0= 0,
-                                x1= 1,
-                                xref= 'paper',
-                                y0= base_line.iloc[0]['tt'],
-                                y1= base_line.iloc[0]['tt'],
-                                line= BASELINE_LINE,)]                     
-    
-    layout = dict(font={'family': FONT_FAMILY},
-                  autosize=True,
-                  height=225,
-                  barmode='relative',
-                  xaxis=dict(title='Date',
-                             tickformat = '%b %d',
-                             nticks = tick_number,
-                             fixedrange=True, #Prevents zoom
-                             automargin=True), #Prevents axis title from overlapping axis
-                  yaxis=dict(title='Travel Time (min)',
-                             range=[0, max_tt],
-                             tickmode = 'linear',
-                             dtick =5,
-                             fixedrange=True),
-                  shapes= [line],
-                  margin=PLOT['margin'],
-                  annotations=annotations,
-                  showlegend=False,
-                #  updatemenus=updatemenus,
-                  )
-       
+    line = {'type':'line',
+            'x0': 0,
+            'x1': 1,
+            'xref': 'paper',
+            'y0': base_line.iloc[0]['tt'],
+            'y1': base_line.iloc[0]['tt'],
+            'line': BASELINE_LINE
+            }     
+
+    if baseline_state == 1: 
+        layout = dict(font={'family': FONT_FAMILY},
+                    autosize=True,
+                    height=225,
+                    barmode='relative',
+                    xaxis=dict(title='Date',
+                                tickformat = '%b %d',
+                                nticks = tick_number,
+                                fixedrange=True, #Prevents zoom
+                                automargin=True), #Prevents axis title from overlapping axis
+                    yaxis=dict(title='Travel Time (min)',
+                                range=[0, max_tt],
+                                tickmode = 'linear',
+                                dtick =5,
+                                fixedrange=True),
+                    shapes= [line],
+                    margin=PLOT['margin'],
+                    annotations=annotations,
+                    showlegend=False,
+                    )
+    elif baseline_state == 2:
+        layout = dict(font={'family': FONT_FAMILY},
+                    autosize=True,
+                    height=225,
+                    barmode='relative',
+                    xaxis=dict(title='Date',
+                                tickformat = '%b %d',
+                                nticks = tick_number,
+                                fixedrange=True, #Prevents zoom
+                                automargin=True), #Prevents axis title from overlapping axis
+                    yaxis=dict(title='Travel Time (min)',
+                                range=[0, max_tt],
+                                tickmode = 'linear',
+                                dtick =5,
+                                fixedrange=True),
+                    margin=PLOT['margin'],
+                    showlegend=False,
+                    )       
     return {'layout': layout, 'data': data}
                                        
 #Elements to include in the "main-"
@@ -696,7 +711,12 @@ STREETS_LAYOUT = html.Div(children=[
                                             labelCheckedClassName="date-group-labels-checked",
                                             className="date-group-items", inline=True),   
                                         ] , className="p-3",
-                            ),            
+                            ),
+                    html.Div([html.H3('Step 4: Display Baseline'),
+                            dbc.RadioItems(id="baseline-toggle",
+                                            options=[
+                                                    {"label": "On", "value": 1},
+                                                    {"label": "Off", "value": 2}], value=1 )]),                    
                             html.H3('Step 4: Select streets in the table to display trends', style={'fontSize':16} ),                                                                             
                         ]
                         ),
@@ -870,7 +890,7 @@ def update_day_type(date_picked, daterange_type, day_type):
             return 'Weekday'
     else:
         return day_type 
-
+# add an input here
 @app.callback(Output(TABLE_DIV_ID, 'children'),
               [Input(CONTROLS['timeperiods'], 'value'),
                Input(CONTROLS['day_types'], 'value'),
@@ -1025,7 +1045,7 @@ def update_street_name(*args):
         #Use the input for the selected street from the orientation of the current tab
     *selected_streets, orientation, timeperiod, day_type = args
     street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
-    main_name = street +  ' ' #+ STREETS_SUFFIX.loc[STREETS_SUFFIX['street']==street, 'street_suffix'].iloc[0]
+    main_name = street #+  ' ' + STREETS_SUFFIX.loc[STREETS_SUFFIX['street']==street, 'street_suffix'].iloc[0]
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
     time_range_title = day_type + ' ' + timeperiod + ' (' + time_range + ')'
     return main_name, time_range_title
@@ -1039,7 +1059,8 @@ def create_update_graph_div(graph_number):
                    Input('tabs', 'value'),
                    *[Input(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()],
                    Input(CONTROLS['date_range_type'], 'value'),
-                   Input(CONTROLS['date_range'], 'value')],
+                   Input(CONTROLS['date_range'], 'value'),
+                   Input("baseline-toggle", 'value'),],
                   [State(CONTROLS['date_picker'], 'date')])
     def update_graph(period, day_type, orientation, *args):
         '''Update the graph for a street direction based on the selected:
@@ -1047,7 +1068,7 @@ def create_update_graph_div(graph_number):
          - time period
          - day type
         '''
-        *selected_streets, daterange_type, date_range, date_picked = args
+        *selected_streets, daterange_type, date_range, baseline_state, date_picked = args
         #Use the input for the selected street from the orientation of the current tab
         if DATERANGE_TYPES[daterange_type] == 'Select Date':
             date_range = datetime.strptime(date_picked, '%Y-%m-%d').date()
@@ -1060,8 +1081,9 @@ def create_update_graph_div(graph_number):
                                  period=period,
                                  day_type=day_type,
                                  daterange_type=daterange_type,
-                                 date_range_id=date_range)
-
+                                 date_range_id=date_range,
+                                 baseline_state=baseline_state)
+        LOGGER.debug(baseline_state)
                                 
         if figure: 
             return html.Div(dcc.Graph(id = GRAPHS[graph_number],
