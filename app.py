@@ -108,17 +108,17 @@ STREETS = OrderedDict(dvp=['DVP: Dundas and Bayview Ramp',
                                  'Lakeshore: Strachan and Bay',
                                  'Lakeshore: Yonge and Spadina',
                                  'Lakeshore: Yonge and Strachan',],
-                      are=['Adelaide: Bathurst and Spadina',
-                           'Adelaide: Spadina and University',
-                           'Adelaide: University and Yonge',
-                           'Adelaide: Yonge and Jarvis',
-                           'Richmond: Spadina and Bathurst',
-                           'Richmond: University and Spadina',
-                           'Richmond: Yonge and University',
-                           'Richmond: Jarvis and Yonge',
-                           'Eastern: Broadview and Leslie',
-                           'Eastern: Leslie and Coxwell',
-                           'Eastern: Coxwell and Woodbine',],
+                      adelaide=['Adelaide: Bathurst and Spadina',
+                                'Adelaide: Spadina and University',
+                                'Adelaide: University and Yonge',
+                                'Adelaide: Yonge and Jarvis',],
+                      richmond=['Richmond: Spadina and Bathurst',
+                                'Richmond: University and Spadina',
+                                'Richmond: Yonge and University',
+                                'Richmond: Jarvis and Yonge',],
+                      eastern=['Eastern: Broadview and Leslie',
+                                'Eastern: Leslie and Coxwell',
+                                'Eastern: Coxwell and Woodbine',],     
                       queen=['Queen: Strachan and Bathurst',
                              'Queen: Bathurst and Spadina',
                              'Queen: Spadina and University',
@@ -137,7 +137,9 @@ STREETS = OrderedDict(dvp=['DVP: Dundas and Bayview Ramp',
 DIRECTIONS = OrderedDict(dvp=['Northbound', 'Southbound'],
                          gardiner=['Eastbound', 'Westbound'],
                          queen=['Eastbound', 'Westbound'],
-                         are=['Eastbound', 'Westbound'],
+                         adelaide=['Eastbound', 'Westbound'],
+                         richmond=['Eastbound', 'Westbound'],
+                         eastern=['Eastbound', 'Westbound'],
                          lakeshore=['Eastbound', 'Westbound'],
                          front=['Eastbound', 'Westbound'],
                          wellington=['Eastbound', 'Westbound'],)
@@ -161,7 +163,9 @@ THRESHOLD = 1
 MAX_TIME = dict(dvp=max(5,DATA[DATA['street'].isin(STREETS['dvp'])].tt.max()),
                 gardiner=max(5,DATA[DATA['street'].isin(STREETS['gardiner'])].tt.max()),
                 queen=max(5,DATA[DATA['street'].isin(STREETS['queen'])].tt.max()),
-                are=max(5,DATA[DATA['street'].isin(STREETS['are'])].tt.max()),
+                adelaide=max(5,DATA[DATA['street'].isin(STREETS['adelaide'])].tt.max()),
+                richmond=max(5,DATA[DATA['street'].isin(STREETS['richmond'])].tt.max()),
+                eastern=max(5,DATA[DATA['street'].isin(STREETS['eastern'])].tt.max()),
                 lakeshore=max(5,DATA[DATA['street'].isin(STREETS['lakeshore'])].tt.max()),
                 front=max(5,DATA[DATA['street'].isin(STREETS['front'])].tt.max()),
                 wellington=max(5,DATA[DATA['street'].isin(STREETS['wellington'])].tt.max())) 
@@ -606,21 +610,8 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                 xref= 'paper',
                                 y0= base_line.iloc[0]['tt'],
                                 y1= base_line.iloc[0]['tt'],
-                                line= BASELINE_LINE,)]
+                                line= BASELINE_LINE,)]                     
     
-    updatemenus=[
-            go.layout.Updatemenu(
-                type="buttons",
-                buttons=[
-                    dict(label="None",
-                        method="relayout",
-                        args=["shapes", []]),
-                    dict(label="Baseline",
-                        method="relayout",
-                        args=["shapes", line])
-                        ]
-                        )]
-
     layout = dict(font={'family': FONT_FAMILY},
                   autosize=True,
                   height=225,
@@ -638,7 +629,8 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                   shapes= [line],
                   margin=PLOT['margin'],
                   annotations=annotations,
-                  showlegend=True,updatemenus=updatemenus
+                  showlegend=False,
+                #  updatemenus=updatemenus,
                   )
        
     return {'layout': layout, 'data': data}
@@ -730,7 +722,9 @@ app.layout = html.Div([
                                     dcc.Tab(label='DVP', value='dvp',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Gardiner', value='gardiner',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Lakeshore', value='lakeshore',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Adelaide/ Richmond/ Eastern', value='are',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Adelaide', value='adelaide',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Richmond', value='richmond',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Eastern', value='eastern',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Front', value='front',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Queen', value='queen',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Wellington', value='wellington',className='custom-tab',selected_className='custom-tab--selected'),
@@ -752,7 +746,7 @@ app.layout = html.Div([
                                                 html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
                                                 html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1])),
                                                 html.Div(children=[LEGEND]),
-                                                html.H3('Basline for ')                     
+                                                html.H3('Baseline for ')                     
                                                 ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
        
                     ]),
@@ -1074,7 +1068,8 @@ def create_update_graph_div(graph_number):
         if figure: 
             return html.Div(dcc.Graph(id = GRAPHS[graph_number],
                                       figure = figure,
-                                      config={'modeBarButtonsToRemove': ['sendDataToCloud','scrollZoom'
+                                      config={'displaylogo':False,
+                                              'modeBarButtonsToRemove': ['sendDataToCloud','scrollZoom'
                                                                         'zoomIn2d',
                                                                         'zoomOut2d',
                                                                         'hoverClosestCartesian',
