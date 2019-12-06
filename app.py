@@ -736,14 +736,18 @@ STREETS_LAYOUT = html.Div(children=[
                                                 labelClassName="date-group-labels",
                                             labelCheckedClassName="date-group-labels-checked",
                                             className="date-group-items", inline=True),   
-                                        ] , className="p-3",
+                                        ] #, className="p-3",
                             ),
-                    html.Div([html.H3('Step 4: Display Baseline'),
+                    html.Div([html.H3('Step 4: Select to display the Baseline', style={'fontSize':16}),
                             dbc.RadioItems(id="baseline-toggle",
+                                            value=1,
+                                            labelClassName="date-group-labels",
+                                            labelCheckedClassName="date-group-labels-checked",
+                                            className="date-group-items", inline=True, 
                                             options=[
-                                                    {"label": "On", "value": 1},
-                                                    {"label": "Off", "value": 2}], value=1 )]),                    
-                            html.H3('Step 4: Select streets in the table to display trends', style={'fontSize':16} ),                                                                             
+                                                    {"label": "Baseline", "value": 1},
+                                                    {"label": "No Baseline", "value": 2}])]),                    
+                            html.H3('Step 5: Select streets in the table to display trends', style={'fontSize':16} ),                                                                             
                         ]
                         ),
                     html.Div([    
