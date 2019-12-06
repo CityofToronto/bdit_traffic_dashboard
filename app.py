@@ -429,11 +429,14 @@ def intstr(integer):
     else:
         return integer
 
-def generate_direction_cells(before, after):
+def generate_direction_cells(before, after, baseline_state):
     '''Generate before/after cells for each street direction
     '''
-    return [html.Td(intstr(after), className=after_cell_class(before, after)),
-            html.Td(intstr(before), className='baseline')]
+    if baseline_state ==1:
+        return [html.Td(intstr(after), className=after_cell_class(before, after)),
+                html.Td(intstr(before), className='baseline')]
+    elif baseline_state ==2:
+        return [html.Td(intstr(after), className=after_cell_class(before, after))]                
 
 def after_cell_class(before, after):
     '''Colour the after cell based on its difference with the before
@@ -445,7 +448,7 @@ def after_cell_class(before, after):
     else:
         return 'same'
 
-def generate_row(df_row, baseline_row, selected, orientation='dvp'):
+def generate_row(df_row, baseline_row, selected, orientation='dvp', baseline_state=1):
     """Create an HTML row from a database row (each street)
 
         :param df_row:
@@ -467,14 +470,20 @@ def generate_row(df_row, baseline_row, selected, orientation='dvp'):
             after_val =  df_row[DIRECTIONS[orientation][i]]
         except KeyError or TypeError:
             after_val = nan 
-        data_cells.extend(generate_direction_cells(baseline_val, after_val))
+        data_cells.extend(generate_direction_cells(baseline_val, after_val, baseline_state))
 
-    return html.Tr([html.Td(df_row['street'], className='segname'), 
-                   *data_cells],
-                   id=df_row['street'],
-                   className=generate_row_class(selected))
+    if baseline_state ==1:
+        return html.Tr([html.Td(df_row['street'], className='segname'), 
+                    *data_cells],
+                    id=df_row['street'],
+                    className=generate_row_class(selected))
+    elif baseline_state ==2:
+        return html.Tr([html.Td(df_row['street'], className='segname'), 
+                    *data_cells],
+                    id=df_row['street'],
+                    className=generate_row_class(selected))                
 
-def generate_table(selected_street, day_type, period, orientation='dvp', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
+def generate_table(selected_street, day_type, period, orientation='dvp', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY, baseline_state=1):
     """Generate HTML table of streets and before-after values
 
         :param selected_street:
@@ -488,6 +497,9 @@ def generate_table(selected_street, day_type, period, orientation='dvp', dateran
         :param daterange_type:
 
         :param daterange:
+
+        :param baseline_state:
+            While baseline has been selected or not
             
     """
     LOGGER.debug('Generate table: daterange_type:' + str(daterange_type) 
@@ -495,7 +507,8 @@ def generate_table(selected_street, day_type, period, orientation='dvp', dateran
                  + ', day_type: ' + str(day_type) 
                  + ', date_range_id: ' + str(date_range_id) 
                  + ', orientation: ' + str(orientation)
-                 + ', selected_street: ' + str(selected_street))
+                 + ', selected_street: ' + str(selected_street)
+                 + ', baseline_state: ' + str(baseline_state))
     filtered_data, baseline = filter_table_data(period, day_type, orientation, daterange_type, date_range_id)
     #Current date for the data, to replace "After" header
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
@@ -519,17 +532,30 @@ def generate_table(selected_street, day_type, period, orientation='dvp', dateran
             #No data for street
             pilot_data = {direction : nan for direction  in DIRECTIONS[orientation]}
             pilot_data['street'] = street
-        row = generate_row(pilot_data,
-                           baseline_row[1], 
-                           selected_street == str(street),
-                           orientation)
+        if baseline_state ==1:
+            row = generate_row(pilot_data,
+                            baseline_row[1], 
+                            selected_street == str(street),
+                            orientation,
+                            baseline_state)
+        elif baseline_state ==2:
+            row = generate_row(pilot_data,
+                            baseline_row[1],
+                            selected_street == str(street),
+                            orientation,
+                            baseline_state)                                   
         rows.append(row) 
-    
 
-    return html.Table(
-                      [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], colSpan=2), html.Td(DIRECTIONS[orientation][1], colSpan=2)])] +
-                      [html.Tr([html.Td(""), html.Td(day), html.Td("Baseline", className='baseline_title'), html.Td(day), html.Td("Baseline", className='baseline_title')])] +
-                      rows, id='data_table')
+    if baseline_state ==1:
+        return html.Table(
+                        [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], colSpan=2), html.Td(DIRECTIONS[orientation][1], colSpan=2)])] +
+                        [html.Tr([html.Td(""), html.Td(day), html.Td("Baseline", className='baseline_title'), html.Td(day), html.Td("Baseline", className='baseline_title')])] +
+                        rows, id='data_table')
+    elif baseline_state ==2:
+        return html.Table(
+                        [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], colSpan=1), html.Td(DIRECTIONS[orientation][1], colSpan=1)])] +
+                        [html.Tr([html.Td(""), html.Td(day), html.Td(day)])] +
+                        rows, id='data_table')                  
 
 def generate_graph_data(data, **kwargs):
     return dict(x=data['date'],
@@ -897,9 +923,10 @@ def update_day_type(date_picked, daterange_type, day_type):
                Input(CONTROLS['date_range_type'], 'value'),
                Input(CONTROLS['date_range'], 'value'),
                Input(CONTROLS['date_picker'], 'date'),
-               Input('tabs', 'value')],
+               Input('tabs', 'value'),
+               Input("baseline-toggle", 'value')],
               [State(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()])
-def update_table(period, day_type, daterange_type, date_range_id, date_picked=datetime.today().date(), orientation='dvp',  *state_data):
+def update_table(period, day_type, daterange_type, date_range_id, date_picked=datetime.today().date(), orientation='dvp', baseline_state=1, *state_data):
     '''Generate HTML table of before-after travel times based on selected
     day type, time period, and remember which row was previously selected
     '''
@@ -916,7 +943,8 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
     table = generate_table(selected_street, day_type, period,
                            orientation=orientation,
                            daterange_type=daterange_type,
-                           date_range_id=date_range_id)
+                           date_range_id=date_range_id,
+                           baseline_state=baseline_state)
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
         LOGGER.debug('Table returned for Selected Date: %s', date_range_id.strftime('%a %b %d'))
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
@@ -1083,7 +1111,6 @@ def create_update_graph_div(graph_number):
                                  daterange_type=daterange_type,
                                  date_range_id=date_range,
                                  baseline_state=baseline_state)
-        LOGGER.debug(baseline_state)
                                 
         if figure: 
             return html.Div(dcc.Graph(id = GRAPHS[graph_number],
