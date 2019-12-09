@@ -104,3 +104,8 @@
   border-right: 1px solid lightgrey !important;
   border-top: 3px solid #e36209 !important;
 }
+
+@media print {
+  .hide-on-print {display:none;}
+  .reverse-stack {flex-direction: column-reverse}
+}

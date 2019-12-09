@@ -685,11 +685,11 @@ LEGEND = html.Div(children = [html.Div(className="box_baseline", style={'display
          html.Span("Selected  ", style={'display':'inline-block', 'margin-left':"10px"})])
 
 STREETS_LAYOUT = html.Div(children=[
-        html.Div(html.Button(id=CONTROLS['toggle'], children='Show Filters')),   
+        html.Div(html.Button(id=CONTROLS['toggle'], children='Show Filters'), className="hide-on-print"),   
         html.Div(
             id=CONTROLS['div_id'],
                 children=[
-                    html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18, 'fontWeight':'bold'}),
+                    html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18, 'fontWeight':'bold'}, className="hide-on-print"),
                     html.Div(
                         children=[
                                 html.H3('Step 1: Select the type of time period', style={'fontSize':16, 'marginTop': 10} ),
@@ -700,7 +700,8 @@ STREETS_LAYOUT = html.Div(children=[
                                         value=0,
                                         clearable=False, 
                                         style={'width': '200px'}),
-                                        title='Select a date range type to filter table data')]),
+                                        title='Select a date range type to filter table data')], className="hide-on-print"
+                                        ),
                     html.Div(
                         children=[
                                 html.H3(id=STEP2, style={'fontSize':16, 'marginTop': 10} ),             
@@ -721,7 +722,7 @@ STREETS_LAYOUT = html.Div(children=[
                                         id=CONTROLS['date_picker_span'],
                                         style={'display':'none'}),
                                 html.H3('Step 3: Select a time of day period', style={'fontSize':16, 'marginTop': 10} ),         
-                                        ]),
+                                        ], className="hide-on-print"),
                     html.Div(                                                    
                             [dbc.RadioItems(id=CONTROLS['day_types'],
                                                 options=[{'label': day_type,
@@ -735,8 +736,8 @@ STREETS_LAYOUT = html.Div(children=[
                                                 value=TIMEPERIODS.iloc[0]['period'],
                                                 labelClassName="date-group-labels",
                                             labelCheckedClassName="date-group-labels-checked",
-                                            className="date-group-items", inline=True),   
-                                        ] #, className="p-3",
+                                            className="date-group-items hide-on-print", inline=True),   
+                                        ] , className="hide-on-print",
                             ),
                     html.Div([html.H3('Step 4: Select to display the Baseline', style={'fontSize':16}),
                             dbc.RadioItems(id="baseline-toggle",
@@ -746,8 +747,9 @@ STREETS_LAYOUT = html.Div(children=[
                                             className="date-group-items", inline=True, 
                                             options=[
                                                     {"label": "Baseline", "value": 1},
-                                                    {"label": "No Baseline", "value": 2}])]),                    
-                            html.H3('Step 5: Select streets in the table to display trends', style={'fontSize':16} ),                                                                             
+                                                    {"label": "No Baseline", "value": 2}])], className="hide-on-print"
+                                                    ),                    
+                            html.H3('Step 5: Select streets in the table to display trends', style={'fontSize':16}, className="hide-on-print" ),                                                                             
                         ]
                         ),
                     html.Div([    
@@ -779,8 +781,7 @@ app.layout = html.Div([
                                     ],
                                     value='dvp',
                                     id='tabs',
-                                    #style={'font-weight':'bold'}
-                                    ))], width=12)
+                                    ),className="hide-on-print")], width=12)
                     ),
             dbc.Container(
                 [dbc.Row([
@@ -794,17 +795,17 @@ app.layout = html.Div([
                                                 html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
                                                 html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1])),
                                                 html.Div(children=[LEGEND]),
-                                                html.H3('Baseline for ')                     
+                                                html.H3('Baseline date range for all segment except whatever and whatever is September 1,2019 to October 12, 2019')                     
                                                 ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
        
-                    ]),
+                    ],className="reverse-stack"),
                 dbc.Row(
                     [dbc.Col(
                        (html.Footer(children=html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
                                                          href="https://www.toronto.ca/services-payments/streets-parking-transportation/road-safety/big-data-innovation-team/")],
                                                          style={'text-align':'right',
-                                                                'padding-right':'1em'}),
+                                                                'padding-right':'1em'},className="hide-on-print"),
                                ),
                        *[html.Div(id=div_id,
                                   style={'display': 'none'},
