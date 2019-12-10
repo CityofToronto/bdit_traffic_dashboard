@@ -775,7 +775,7 @@ STREETS_LAYOUT = html.Div(children=[
 
 app.layout = html.Div([
             dbc.Row(
-                dbc.Col([html.H1(children=TITLE, id='title')],
+                dbc.Col([html.H1(children=TITLE, id='title', className='title-style')],
                                 width=12, style={'backgroundColor': "#165788"})
                     ),
             dbc.Row(
