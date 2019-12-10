@@ -697,7 +697,7 @@ STREETS_LAYOUT = html.Div(children=[
         html.Div(children=[
                     html.Button(id=CONTROLS['toggle'], children='Show Filters', style = {'margin-right':'5px'}),
                     html.Button("Generate PDF", id='print-button')]
-                , className="hide-on-print"),  
+                , className="hide-on-print", style={'margin-top':'5px'}),  
         html.Div(
             id=CONTROLS['div_id'],
                 children=[
@@ -1103,7 +1103,9 @@ def update_street_name(*args):
         #Use the input for the selected street from the orientation of the current tab
     *selected_streets, orientation, timeperiod, day_type = args
     street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
-    main_name = street #+  ' ' + STREETS_SUFFIX.loc[STREETS_SUFFIX['street']==street, 'street_suffix'].iloc[0]
+    table_street = DATA[DATA['street'] == street]['street1'].iloc[0]
+    main_street = DATA[DATA['street'] == STREETS[orientation][0]]['street_short'].iloc[0]
+    main_name = main_street + ': '+ table_street
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
     time_range_title = day_type + ' ' + timeperiod + ' (' + time_range + ')'
     return main_name, time_range_title
