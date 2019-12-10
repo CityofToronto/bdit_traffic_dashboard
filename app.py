@@ -35,27 +35,36 @@ else:
     con = connect(**dbset)
 
 DATA = pandasql.read_sql('''
-                           SELECT d.street as street_short, case when direction = 'EB' then 'Eastbound'
+                          SELECT case when d.street in ('Adelaide', 'Richmond', 'Queen', 'Front', 'Wellington') then d.street||' Street' 
+                            when d.street in ('Eastern') then d.street||' Avenue'
+                            when d.street = 'DVP' then 'Don Valley Parkway'
+                            when d.street = 'Gardiner' then 'Gardiner Expressway'
+                            when d.street = 'Lakeshore' then 'Lake Shore Boulevard' end
+                            as street_short, case when direction = 'EB' then 'Eastbound'
                             when direction = 'WB' then 'Westbound'
                             when direction = 'NB' then 'Northbound'
                             when direction ='SB' then 'Southbound' 
-                            else direction end as direction, COALESCE(name1, d.street || ': ' || d.start_crossstreet || ' and ' || d.end_crossstreet) as street, 
+                            else direction end as direction,  COALESCE(name2, d.start_crossstreet || ' to ' || d.end_crossstreet) as street1,
+							COALESCE(name1, d.street || ': ' || d.start_crossstreet || ' and ' || d.end_crossstreet) as street, 
                             date, day_type, category, period, round(tt/60,2) as tt, most_recent, week_number, month_number 
                             FROM data_analysis.gardiner_dash_daily_mat d
 							join data_analysis.gardiner_periods using (period, day_type)
                             left join (SELECT DISTINCT ON (d1.street, d1.start_cross, d1.end_cross) d1.street, d1.start_cross, d1.end_cross, 
-                                        d1.street || ': ' || d1.start_cross || ' and ' || d1.end_cross as name1
+                                        d1.street || ': ' || d1.start_cross || ' and ' || d1.end_cross as name1,
+									   d1.start_cross || ' to ' || d1.end_cross as name2
                                         FROM data_analysis.gardiner_segments d1, data_analysis.gardiner_segments d2 
                                         WHERE d1.street = d2.street and d1.start_cross = d2.end_cross and d1.direction in ('NB', 'EB')
                                         ORDER BY d1.street) n	
                             ON n.street = d.street AND ( (n.start_cross = d.start_crossstreet AND n.end_cross = d.end_crossstreet) OR (n.start_cross = d.end_crossstreet AND n.end_cross = d.start_crossstreet)) 									
                             order by d.street, d.direction, start_crossstreet,time_range''', con)
-BASELINE = pandasql.read_sql('''SELECT COALESCE(name1, d.street || ': ' || d.from_intersection || ' and ' || d.to_intersection) as street, d.street as street_short,
+BASELINE = pandasql.read_sql('''SELECT COALESCE(name1, d.street || ': ' || d.from_intersection || ' and ' || d.to_intersection) as street,
+	                            COALESCE(name2, d.from_intersection || ' to ' || d.to_intersection) as street1, d.street as street_short,
                                 d.direction, from_intersection, to_intersection,day_type, period, to_char(lower(period_range::TIMERANGE), 'FMHH AM')||' to '||to_char(upper(period_range::TIMERANGE), 'FMHH AM') as period_range , tt
                                 FROM data_analysis.gardiner_dash_baseline_mat d 
 								join data_analysis.gardiner_periods using (period, day_type)
                                 left join (SELECT DISTINCT ON (d1.street, d1.start_cross, d1.end_cross) d1.street, d1.start_cross, d1.end_cross, 
-                                                            d1.street || ': ' || d1.start_cross || ' and ' || d1.end_cross as name1
+                                                            d1.street || ': ' || d1.start_cross || ' and ' || d1.end_cross as name1,
+										  					d1.start_cross || ' to ' || d1.end_cross as name2
                                                             FROM data_analysis.gardiner_segments d1, data_analysis.gardiner_segments d2 
                                                             WHERE d1.street = d2.street and d1.start_cross = d2.end_cross and d1.direction in ('NB', 'EB')
                                                             ORDER BY d1.street) n																																   
@@ -471,14 +480,14 @@ def generate_row(df_row, baseline_row, selected, orientation='dvp', baseline_sta
         except KeyError or TypeError:
             after_val = nan 
         data_cells.extend(generate_direction_cells(baseline_val, after_val, baseline_state))
-
+    table_street = DATA[DATA['street'] == df_row['street']]['street1'].iloc[0]
     if baseline_state ==1:
-        return html.Tr([html.Td(df_row['street'], className='segname'), 
+        return html.Tr([html.Td(table_street, className='segname'), 
                     *data_cells],
                     id=df_row['street'],
                     className=generate_row_class(selected))
     elif baseline_state ==2:
-        return html.Tr([html.Td(df_row['street'], className='segname'), 
+        return html.Tr([html.Td(table_street, className='segname'), 
                     *data_cells],
                     id=df_row['street'],
                     className=generate_row_class(selected))                
@@ -686,7 +695,7 @@ LEGEND = html.Div(children = [html.Div(className="box_baseline", style={'display
 
 STREETS_LAYOUT = html.Div(children=[
         html.Div(children=[
-                    html.Button(id=CONTROLS['toggle'], children='Show Filters'),
+                    html.Button(id=CONTROLS['toggle'], children='Show Filters', style = {'margin-right':'5px'}),
                     html.Button("Generate PDF", id='print-button')]
                 , className="hide-on-print"),  
         html.Div(
@@ -757,7 +766,7 @@ STREETS_LAYOUT = html.Div(children=[
                         ),
                     html.Div([    
                             html.Div(id=TABLE_TITLE, style={'fontSize':16, 'marginTop': 5, 'fontWeight':'bold'}),
-                            html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['dvp'], 'Weekday', 'AM Peak')),
+                            html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['dvp'], 'Weekday', 'AM Peak'), className="unselect-on-print"),
                             html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline']),
                             html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline']), 
                                              
@@ -886,17 +895,20 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
                 Output(TABLE_TITLE, 'children')],
               [Input(CONTROLS['date_picker'], 'date'),
                Input(CONTROLS['day_types'], 'value'),
-               Input(CONTROLS['date_range_type'], 'value')]) 
-def generate_step_two(selected_date, day_type, daterange_type):
+               Input(CONTROLS['date_range_type'], 'value'),
+               Input('tabs', 'value')]) 
+def generate_step_two(selected_date, day_type, daterange_type, tabs):
+    tabs_name = DATA[DATA['street'] == STREETS[tabs][0]]['street_short'].iloc[0]
+    
     if DATERANGE_TYPES[daterange_type] == 'Select Date': 
         step2 =  'Step 2: Select the date'
-        table_title = 'Average Daily Travel Time (mins)'
+        table_title = str(tabs_name) + ' - Average Daily Travel Time (mins)'
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         step2 = 'Step 2: Select the week'
-        table_title = 'Average Weekly Travel Time (mins)' 
+        table_title = str(tabs_name) + ' - Average Weekly Travel Time (mins)' 
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         step2 = 'Step 2: Select the month'
-        table_title = 'Average Monthly Travel Time (mins)'
+        table_title = str(tabs_name) + ' - Average Monthly Travel Time (mins)'
 
     return step2, table_title
 
