@@ -685,8 +685,10 @@ LEGEND = html.Div(children = [html.Div(className="box_baseline", style={'display
          html.Span("Selected  ", style={'display':'inline-block', 'margin-left':"10px"})])
 
 STREETS_LAYOUT = html.Div(children=[
-        html.Div(html.Button(id=CONTROLS['toggle'], children='Show Filters'), className="hide-on-print"),  
-        html.Div(dbc.Button("Generate PDF", id='print-button')), 
+        html.Div(children=[
+                    html.Button(id=CONTROLS['toggle'], children='Show Filters'),
+                    html.Button("Generate PDF", id='print-button')]
+                , className="hide-on-print"),  
         html.Div(
             id=CONTROLS['div_id'],
                 children=[
@@ -796,7 +798,8 @@ app.layout = html.Div([
                                                 html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
                                                 html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1])),
                                                 html.Div(children=[LEGEND]),
-                                                html.H3('Baseline date range for all segment except whatever and whatever is September 1,2019 to October 12, 2019')                     
+                                                html.H3(id = 'baseline-description', children=
+                                                        'All routes have the baseline of September 1,2019 to October 12, 2019 except for TTC trackwork at Kingston/Woodbine and Queen with a baseline of August 1, 2019 to September 7, 2019.')                     
                                                 ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
        
                     ],className="reverse-stack"),
@@ -831,6 +834,15 @@ def display_streets(value):
         return {'display':'inline'}
     else:
         return {'display':'none'}
+
+@app.callback(Output('baseline-description', 'style'),
+            [Input("baseline-toggle", 'value')],)
+def display_baseline(value):
+    '''If baseline is clicked then display baseline description'''
+    if value == 1:
+        return {'display':'inline'}
+    else:
+        return {'display':'none'}        
 
 @app.callback(Output(CONTROLS['div_id'], 'style'),
               [Input(CONTROLS['toggle'], 'n_clicks')],
