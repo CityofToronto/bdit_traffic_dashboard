@@ -108,4 +108,6 @@
 @media print {
   .hide-on-print {display:none;}
   .reverse-stack {flex-direction: column-reverse}
+  @page { margin: 0; }
+  body { margin: 1.6cm; }
 }
