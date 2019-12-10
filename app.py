@@ -685,7 +685,8 @@ LEGEND = html.Div(children = [html.Div(className="box_baseline", style={'display
          html.Span("Selected  ", style={'display':'inline-block', 'margin-left':"10px"})])
 
 STREETS_LAYOUT = html.Div(children=[
-        html.Div(html.Button(id=CONTROLS['toggle'], children='Show Filters'), className="hide-on-print"),   
+        html.Div(html.Button(id=CONTROLS['toggle'], children='Show Filters'), className="hide-on-print"),  
+        html.Div(dbc.Button("Generate PDF", id='print-button')), 
         html.Div(
             id=CONTROLS['div_id'],
                 children=[
