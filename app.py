@@ -810,13 +810,18 @@ app.layout = html.Div([
                                                 html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
                                                 html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1])),
                                                 html.Div(children=[LEGEND]),
-                                                html.H3(id = 'baseline-description', children=
-                                                        'All routes have the baseline of September 1,2019 to October 12, 2019 except for TTC trackwork at Kingston/Woodbine and Queen with a baseline of August 1, 2019 to September 7, 2019.')                     
+                                                #html.H3(id = 'baseline-description', children=
+                                                 #       'All routes have the baseline of September 1,2019 to October 12, 2019 except for TTC trackwork at Kingston/Woodbine and Queen with a baseline of August 1, 2019 to September 7, 2019.')                     
                                                 ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
        
                     ],className="reverse-stack"),
                 dbc.Row(
                     [dbc.Col(
+                        html.H3(id = 'baseline-description', 
+                                children='All routes have the baseline of September 1,2019 to October 12, 2019 except for TTC trackwork at Kingston/Woodbine and Queen with a baseline of August 1, 2019 to September 7, 2019.'
+                                    )
+                        , width={"size":4}, sm=12, xs=12, md=12, lg=4),
+                     dbc.Col(
                        (html.Footer(children=html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
                                                          href="https://www.toronto.ca/services-payments/streets-parking-transportation/road-safety/big-data-innovation-team/")],

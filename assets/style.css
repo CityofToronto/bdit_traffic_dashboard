@@ -163,6 +163,6 @@
       font-size: 1.5rem; }
 
   @page { margin: 0; }
-  body { margin: 1.6cm; 
+  body { margin-top: 1.3cm;
          -webkit-print-color-adjust: exact !important;}
 }
