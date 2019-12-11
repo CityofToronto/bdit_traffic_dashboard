@@ -105,9 +105,8 @@ h2 { font-size: 1.6rem; line-height: 1.1; letter-spacing: -.05rem; margin-bottom
    td.baseline_title {
       background-color: #FFFFFF;
       color: #808080; 
-      font-size: 1.6rem;   
+      /* font-size: 1.6rem;    */
   }
-
    td.title {
       background-color: #FFFFFF;
       color: #000000;

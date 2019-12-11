@@ -557,8 +557,8 @@ def generate_table(selected_street, day_type, period, orientation='dvp', dateran
 
     if baseline_state ==1:
         return html.Table(
-                        [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], colSpan=2), html.Td(DIRECTIONS[orientation][1], colSpan=2)])] +
-                        [html.Tr([html.Td(""), html.Td(day), html.Td("Baseline", className='baseline_title'), html.Td(day), html.Td("Baseline", className='baseline_title')])] +
+                        [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=2), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=2)])] +
+                        [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td("Baseline", className='baseline_title'), html.Td(day, className='date-title'), html.Td("Baseline", className='baseline_title')])] +
                         rows, id='data_table')
     elif baseline_state ==2:
         return html.Table(

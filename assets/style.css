@@ -117,29 +117,51 @@
   .reverse-stack {flex-direction: column-reverse;}
   .title-style {margin-left: 25px;
                 color: black;}
+  .title-style-background {background-color: white;}
   tr.selected {outline: none;}
-  .table-title {width: max-content}
-  td.worse {
-    background-color: #E9A3C9;
-    color: #000000; 
-    font-size: 1.6rem; }
-  td.better {
-    background-color: #A1D76A;
-    color: #000000; 
-    font-size: 1.6rem; }
+  .table-title {width: max-content;}
   td.baseline {
-      background-color: #FFFFFF;
-      color: #808080; 
-      font-size: 1.6rem;
-    }
+    background-color: #FFFFFF;
+    color: #808080; 
+    font-size: 1.6rem;
+  }
+  td.segname {
+    text-align: left; 
+    font-size: 1.6rem;
+  }
   td.baseline_title {
       background-color: #FFFFFF;
       color: #808080; 
       font-size: 1.6rem;   
   }
-  .title-style-background {
-      background-color: white;
+  td.title {
+      background-color: #FFFFFF;
+      color: #000000;
+      font-weight: bold;
+      text-align: center; 
+      font-size: 1.7rem; 
   }
+  td.worse {
+      background-color: #E9A3C9;
+      color: #000000; 
+      font-size: 1.6rem; }
+  td.better {
+      background-color: #A1D76A;
+      color: #000000; 
+      font-size: 1.6rem; }
+  td.same {
+      background-color: #F7F7F7;
+      color: #000000; 
+      font-size: 1.6rem; }
+  td.date-title {
+      background-color: #F7F7F7;
+      color: #000000; 
+      font-size: 1.5rem; }
+  td.direction-title {
+      background-color: white;
+      color: #000000; 
+      font-size: 1.5rem; }
+
   @page { margin: 0; }
   body { margin: 1.6cm; 
          -webkit-print-color-adjust: exact !important;}
