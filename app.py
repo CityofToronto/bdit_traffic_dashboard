@@ -445,7 +445,7 @@ def generate_direction_cells(before, after, baseline_state):
         return [html.Td(intstr(after), className=after_cell_class(before, after)),
                 html.Td(intstr(before), className='baseline')]
     elif baseline_state ==2:
-        return [html.Td(intstr(after), className=after_cell_class(before, after))]                
+        return [html.Td(intstr(after), className='same')]                
 
 def after_cell_class(before, after):
     '''Colour the after cell based on its difference with the before
