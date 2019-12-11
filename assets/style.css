@@ -115,6 +115,28 @@
   .title-style {margin-left: 25px;
                 color: black;}
   tr.selected {outline: none;}
+  .table-title {width: max-content}
+  td.worse {
+    background-color: #E9A3C9;
+    color: #000000; 
+    font-size: 1.6rem; }
+  td.better {
+    background-color: #A1D76A;
+    color: #000000; 
+    font-size: 1.6rem; }
+  td.baseline {
+      background-color: #FFFFFF;
+      color: #808080; 
+      font-size: 1.6rem;
+    }
+  td.baseline_title {
+      background-color: #FFFFFF;
+      color: #808080; 
+      font-size: 1.6rem;   
+  }
+  .twelve.columns {
+      background-color: white;
+  }
   @page { margin: 0; }
   body { margin: 1.6cm; }
 }

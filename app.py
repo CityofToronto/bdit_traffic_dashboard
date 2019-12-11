@@ -680,6 +680,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                 range=[0, max_tt],
                                 tickmode = 'linear',
                                 dtick =5,
+                                showgrid = False,
                                 fixedrange=True),
                     margin=PLOT['margin'],
                     showlegend=False,
@@ -777,7 +778,7 @@ STREETS_LAYOUT = html.Div(children=[
 app.layout = html.Div([
             dbc.Row(
                 dbc.Col([html.H1(children=TITLE, id='title', className='title-style')],
-                                width=12, style={'backgroundColor': "#165788"})
+                                width=12)
                     ),
             dbc.Row(
                 dbc.Col([html.Div(
