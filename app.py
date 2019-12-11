@@ -658,6 +658,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                     yaxis=dict(title='Travel Time (min)',
                                 range=[0, max_tt],
                                 tickmode = 'linear',
+                                showgrid = False,
                                 dtick =5,
                                 fixedrange=True),
                     shapes= [line],
@@ -766,9 +767,9 @@ STREETS_LAYOUT = html.Div(children=[
                         ),
                     html.Div([    
                             html.Div(id=TABLE_TITLE, style={'fontSize':16, 'marginTop': 5, 'fontWeight':'bold'}),
-                            html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['dvp'], 'Weekday', 'AM Peak'), className="unselect-on-print"),
-                            html.Div([html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline']),
-                            html.Div([html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline']), 
+                            html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['dvp'], 'Weekday', 'AM Peak'), className="data-table"),
+                            html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline']),
+                            html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline']), 
                                              
                     ])
         ])                    
@@ -844,14 +845,16 @@ def display_streets(value):
     else:
         return {'display':'none'}
 
-@app.callback(Output('baseline-description', 'style'),
-            [Input("baseline-toggle", 'value')],)
+@app.callback([Output('baseline-description', 'style'),
+               Output('tt-long', 'style'),
+               Output('tt-short', 'style')],
+              [Input("baseline-toggle", 'value')],)
 def display_baseline(value):
     '''If baseline is clicked then display baseline description'''
     if value == 1:
-        return {'display':'inline'}
+        return {'display':'inline'}, {'display':'block'}, {'display':'block'}
     else:
-        return {'display':'none'}        
+        return {'display':'none'}, {'display':'none'}, {'display':'none'}        
 
 @app.callback(Output(CONTROLS['div_id'], 'style'),
               [Input(CONTROLS['toggle'], 'n_clicks')],
