@@ -68,7 +68,7 @@
   outline-width: 5px;
   background: #165788;
 }
-
+.twelve.columns { background-color: #165788; }
 
 /* tabs styling  */
 .custom-tabs-container {
@@ -108,7 +108,10 @@
 .title-style {
   margin-left: 15px;
 }
-
+.title-style-background {
+  background-color: #165788;
+  width: 100%;
+}
 @media print {
   .hide-on-print {display:none;}
   .reverse-stack {flex-direction: column-reverse;}
@@ -134,7 +137,7 @@
       color: #808080; 
       font-size: 1.6rem;   
   }
-  .twelve.columns {
+  .title-style-background {
       background-color: white;
   }
   @page { margin: 0; }

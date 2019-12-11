@@ -691,7 +691,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
 LEGEND = html.Div(children = [html.Div(className="box_baseline", style={'display':'inline-block', 'margin-left':"30px"}),
          html.Span("Baseline  ", style={'display':'inline-block', 'margin-left':"10px"}),
          html.Div(className="box_closure", style={'display':'inline-block', 'margin-left':"20px"}),
-         html.Span("Closure  ", style={'display':'inline-block', 'margin-left':"10px"}), 
+         html.Span("Construction  ", style={'display':'inline-block', 'margin-left':"10px"}), 
          html.Div(className="box_selected", style={'display':'inline-block', 'margin-left':"20px"}),
          html.Span("Selected  ", style={'display':'inline-block', 'margin-left':"10px"})])
 
@@ -777,8 +777,9 @@ STREETS_LAYOUT = html.Div(children=[
 
 app.layout = html.Div([
             dbc.Row(
-                dbc.Col([html.H1(children=TITLE, id='title', className='title-style')],
-                                width=12)
+                html.Div(
+                    dbc.Col([html.H1(children=TITLE, id='title', className='title-style')], width=12)
+                                , className='title-style-background')
                     ),
             dbc.Row(
                 dbc.Col([html.Div(

@@ -73,7 +73,6 @@ td.same {
    color: #000000; 
    font-size: 1.4rem; }
 
-.twelve.columns { background-color: #165788; }
 h1 { font-size: 2.0rem; line-height: 1.2; letter-spacing: -.1rem; margin-top: 0.6rem; margin-bottom: 0.6rem; margin-left: 0.6rem; color: #FFFFFF; font-weight: bold}
 h2 { font-size: 1.6rem; line-height: 1.1; letter-spacing: -.05rem; margin-bottom: 0.4rem; margin-top: 0.4rem; margin-left: 0.6rem;}
 
@@ -420,7 +419,8 @@ tr.notselected:hover {
 tr.selected {
    outline: 4px solid black;
    outline-offset: -4px;
-   padding-bottom: 2px; }
+   padding-bottom: 2px; 
+  }
 tr.selected td:first-child {
    padding-left : 8px; }
 tr.selected td:last-child {
