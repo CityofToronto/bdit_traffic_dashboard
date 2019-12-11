@@ -105,6 +105,18 @@
   border-top: 3px solid #e36209 !important;
 }
 
+/* Table Styling */
+.graph-period-title {
+  font-size:2.5rem
+}
+.graph-title {
+  font-size:2rem
+}
+.table-title {
+  font-size: 15px; 
+  margin-top: 15px;
+  font-weight:bold}
+}
 .title-style {
   margin-left: 15px;
 }
@@ -112,57 +124,90 @@
   background-color: #165788;
   width: 100%;
 }
+
 @media print {
   .hide-on-print {display:none;}
   .reverse-stack {flex-direction: column-reverse;}
-  .title-style {margin-left: 25px;
-                color: black;}
+  .graph-period-title {
+    font-size:2.8rem;
+    color: black;
+  }
+  .graph-title {
+    font-size:2.5rem;
+    color: black;
+  }
+  .title-style {
+    margin-left: 23px;
+    color: black;
+    font-size: 3.5rem;}
   .title-style-background {background-color: white;}
-  tr.selected {outline: none;}
-  .table-title {width: max-content;}
+  tr.selected {outline: none;
+              }
+  .table-title {
+    margin-top: 20px;
+    color: black;
+    width: max-content;
+    font-size: 2.6rem;}
   td.baseline {
     background-color: #FFFFFF;
-    color: #808080; 
-    font-size: 1.6rem;
+    color: black; 
+    font-size: 2.6rem;
   }
   td.segname {
-    text-align: left; 
-    font-size: 1.6rem;
+    text-align: left;
+    color: black; 
+    font-size: 2.6rem;
   }
   td.baseline_title {
       background-color: #FFFFFF;
-      color: #808080; 
-      font-size: 1.6rem;   
+      color: black; 
+      font-size: 2.6rem;   
   }
   td.title {
       background-color: #FFFFFF;
       color: #000000;
       font-weight: bold;
       text-align: center; 
-      font-size: 1.7rem; 
+      font-size: 2.6rem; 
   }
   td.worse {
       background-color: #E9A3C9;
       color: #000000; 
-      font-size: 1.6rem; }
+      font-size: 2.6rem; }
   td.better {
       background-color: #A1D76A;
       color: #000000; 
-      font-size: 1.6rem; }
+      font-size: 2.6rem; }
   td.same {
-      background-color: #F7F7F7;
+      background-color: white;
       color: #000000; 
-      font-size: 1.6rem; }
+      font-size: 2.6rem; }
   td.date-title {
-      background-color: #F7F7F7;
+      background-color: white;
       color: #000000; 
-      font-size: 1.5rem; }
+      font-size: 2.6rem; }
   td.direction-title {
       background-color: white;
       color: #000000; 
-      font-size: 1.5rem; }
-
+      font-size: 2.6rem; }
+  #baseline-desciption {
+      font-size: 1.5rem;
+    }
+  td{
+    border-color: black;
+  }
+  .tt-long{
+    padding-top: 10px;
+    font-size: 2rem;
+  }
+  .tt-short{
+    font-size: 2rem;
+  }
+  .baseline-description{
+    padding-top: 10px;
+    font-size: 2rem;
+  }
   @page { margin: 0; }
-  body { margin-top: 1.3cm;
+  body { margin-top: 1.5cm;
          -webkit-print-color-adjust: exact !important;}
 }

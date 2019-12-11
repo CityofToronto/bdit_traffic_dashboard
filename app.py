@@ -558,7 +558,7 @@ def generate_table(selected_street, day_type, period, orientation='dvp', dateran
     if baseline_state ==1:
         return html.Table(
                         [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=2), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=2)])] +
-                        [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td("Baseline", className='baseline_title'), html.Td(day, className='date-title'), html.Td("Baseline", className='baseline_title')])] +
+                        [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title'), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title')])] +
                         rows, id='data_table')
     elif baseline_state ==2:
         return html.Table(
@@ -574,7 +574,7 @@ def generate_graph_data(data, **kwargs):
                 textposition='inside',
                 type='bar',
                 insidetextfont=dict(color='rgba(255,255,255,1)',
-                                    size=12),
+                                    size=14),
                 **kwargs)
 
 def generate_figure(street, direction, day_type='Weekday', period='AMPK',
@@ -627,8 +627,8 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                                 marker=dict(color = PLOT_COLORS['baseline']), 
                                                 name='Baseline',showlegend=False)                                                                                    
     data.append(selected_baseline)
-    annotations = [dict(x=-0.008,
-                        y=base_line.iloc[0]['tt'] + 2,
+    annotations = [dict(x=0,
+                        y=base_line.iloc[0]['tt'] + 1,
                         text='Baseline',
                         font={'color':BASELINE_LINE['color']},
                         xref='paper',
@@ -646,13 +646,14 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
             }     
 
     if baseline_state == 1: 
-        layout = dict(font={'family': FONT_FAMILY},
+        layout = dict(font={'family': FONT_FAMILY, 'size':14},
                     autosize=True,
-                    height=225,
+                    height=235,
                     barmode='relative',
                     xaxis=dict(title='Date',
                                 tickformat = '%b %d',
                                 nticks = tick_number,
+                                showgrid = False,
                                 fixedrange=True, #Prevents zoom
                                 automargin=True), #Prevents axis title from overlapping axis
                     yaxis=dict(title='Travel Time (min)',
@@ -667,9 +668,9 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                     showlegend=False,
                     )
     elif baseline_state == 2:
-        layout = dict(font={'family': FONT_FAMILY},
+        layout = dict(font={'family': FONT_FAMILY, 'size':14},
                     autosize=True,
-                    height=225,
+                    height=235,
                     barmode='relative',
                     xaxis=dict(title='Date',
                                 tickformat = '%b %d',
@@ -681,6 +682,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                 tickmode = 'linear',
                                 dtick =5,
                                 showgrid = False,
+                                showline=True,
                                 fixedrange=True),
                     margin=PLOT['margin'],
                     showlegend=False,
@@ -767,10 +769,10 @@ STREETS_LAYOUT = html.Div(children=[
                         ]
                         ),
                     html.Div([    
-                            html.Div(id=TABLE_TITLE, style={'fontSize':16, 'marginTop': 5, 'fontWeight':'bold'}),
+                            html.Div(id=TABLE_TITLE, className="table-title"),
                             html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['dvp'], 'Weekday', 'AM Peak'), className="data-table"),
-                            html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline']),
-                            html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline']), 
+                            html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline'], className="tt-long"),
+                            html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline'], className="tt-short"), 
                                              
                     ])
         ])                    
@@ -803,12 +805,12 @@ app.layout = html.Div([
                     dbc.Col((                    
                        html.Div(id=MAIN_DIV, children=[STREETS_LAYOUT])), width={"size":4, "order":1}, sm=12, xs=12, md=12, lg=4),
                     dbc.Col(html.Div(children=[
-                                                html.H2(id=STREET_TITLE, style={'fontSize':30, 'fontWeight':'bold'}),
-                                                html.H2(id=TIME_TITLE, style={'fontSize':25}),                  
-                                                html.H2(id=STREETNAME_DIV[0], style={'fontSize':20}),
+                                                html.H2(id=STREET_TITLE, style={'fontSize':30, 'fontWeight':'bold', 'fontColor':'black'}),
+                                                html.H2(id=TIME_TITLE, className="graph-period-title"),                  
+                                                html.H2(id=STREETNAME_DIV[0],className="graph-title"),
                                                 html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
-                                                html.H2(id=STREETNAME_DIV[1], style={'fontSize':20}),
-                                                html.Div(id = GRAPHDIVS[1], children=dcc.Graph(id=GRAPHS[1])),
+                                                html.H2(id=STREETNAME_DIV[1], className="graph-title"),
+                                                html.Div(id = GRAPHDIVS[1],children=dcc.Graph(id=GRAPHS[1])),
                                                 html.Div(children=[LEGEND]),
                                                 #html.H3(id = 'baseline-description', children=
                                                  #       'All routes have the baseline of September 1,2019 to October 12, 2019 except for TTC trackwork at Kingston/Woodbine and Queen with a baseline of August 1, 2019 to September 7, 2019.')                     
@@ -818,7 +820,8 @@ app.layout = html.Div([
                 dbc.Row(
                     [dbc.Col(
                         html.H3(id = 'baseline-description', 
-                                children='All routes have the baseline of September 1,2019 to October 12, 2019 except for TTC trackwork at Kingston/Woodbine and Queen with a baseline of August 1, 2019 to September 7, 2019.'
+                                children='All routes have the baseline of September 1,2019 to October 12, 2019 except for TTC trackwork at Kingston/Woodbine and Queen with a baseline of August 1, 2019 to September 7, 2019.',
+                                className="baseline-description"
                                     )
                         , width={"size":4}, sm=12, xs=12, md=12, lg=4),
                      dbc.Col(
