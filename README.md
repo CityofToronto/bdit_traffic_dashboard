@@ -203,6 +203,46 @@ psql -h rds.ip -d bigdata -c "\COPY (SELECT * FROM king_pilot.dash_daily) TO STD
 
 The first line forces the heroku app to restart, thus killing all connections to the heroku PostgreSQL database, enabling the `TRUNCATE` and `COPY` operation to happen in the second line, which syncs the `dash_daily` table in heroku, with the `dash_daily` VIEW in our data warehouse.
 
+### Scheduling with Airflow on the EC2
+
+Schedule data syncing and app reloading using Airflow processes.
+
+1. Give necessary permission to `heroku_bot` for refreshing/updating the materialized view.
+2. Write a dag file to refresh and reload.
+- Use `postgres_hook` to get postgresql connections for heroku_bot 
+    ```python
+    from airflow.hooks.postgres_hook import PostgresHook
+    ## Get connection configuration
+    heroku_bot = PostgresHook("heroku_bot_rds")
+    rds_con = heroku_bot.get_uri()
+    ```
+- Write refreshing task using command line for BashOperator
+    ```bash
+    '''set -o pipefail; psql $heroku_rds -v "ON_ERROR_STOP=1" -c "REFRESH MATERIALIZED VIEW data_analysis.gardiner_dash_baseline_mat;"'''
+    ```
+    It is important to include `"ON_ERROR_STOP=1"` so it will not fail silently when the psql fails.
+
+- Write reloading task using command line for BashOperator
+    
+    Requirments for reloading gunicorn by app name:
+    1. `pipenv install setproctitle`
+    2. Run gunicorn with [process naming](https://docs.gunicorn.org/en/stable/settings.html#proc-name), e.g.`--name=gardiner`
+    3. Make sure airflow has permission to kill processes (e.g. have airflow run gunicorn)
+
+    You can then then use this bash command to reload your app. 
+
+    `-HUP` signals gunicorn to reload the configuration, start new worker processes and gracefully shutdown older workers. 
+
+    ```bash
+    '''killall gunicorn: master [YOUR APP NAME] -HUP'''
+    ```
+
+- Set upstream in your dag to make sure reloading task runs after refreshing tasks have successfully ran.    
+    ```python
+    [update_baseline,update_daily] >> reload_gunicorn
+    ```
+
+
 ## Contribution
 
 This branch, now that it is in production, is **protected**. Develop instead on a branch and, when an issue is complete, submit a pull request for staff to review.
