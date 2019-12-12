@@ -15,6 +15,7 @@ pandas = "*"
 python-dateutil = "*"
 dash-daq = "==0.1.0"
 dash-bootstrap-components = "*"
+setproctitle = "*"
 
 [dev-packages]
 pylint = "*"

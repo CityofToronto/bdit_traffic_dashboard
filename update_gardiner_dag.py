@@ -71,3 +71,12 @@ update_baseline = BashOperator(
     bash_command = '''set -o pipefail; psql $heroku_rds -v "ON_ERROR_STOP=1" -c "REFRESH MATERIALIZED VIEW data_analysis.gardiner_dash_baseline_mat;"''',
     retries = 0
     )
+
+reload_gunicorn = BashOperator(
+    dag=dag,
+    task_id = 'reload_gunicorn',
+    bash_command = '''killall 'gunicorn: master [gardiner]' -HUP''',
+    retries = 0
+)
+
+[update_baseline,update_daily] >> reload_gunicorn

@@ -682,7 +682,6 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                 tickmode = 'linear',
                                 dtick =5,
                                 showgrid = False,
-                                showline=True,
                                 fixedrange=True),
                     margin=PLOT['margin'],
                     showlegend=False,
@@ -803,7 +802,7 @@ app.layout = html.Div([
             dbc.Container(
                 [dbc.Row([
                     dbc.Col((                    
-                       html.Div(id=MAIN_DIV, children=[STREETS_LAYOUT])), width={"size":4, "order":1}, sm=12, xs=12, md=12, lg=4),
+                            html.Div(id=MAIN_DIV, children=[STREETS_LAYOUT])), width={"size":4, "order":1}, sm=12, xs=12, md=12, lg=4),
                     dbc.Col(html.Div(children=[
                                                 html.H2(id=STREET_TITLE, style={'fontSize':30, 'fontWeight':'bold', 'fontColor':'black'}),
                                                 html.H2(id=TIME_TITLE, className="graph-period-title"),                  
@@ -812,20 +811,18 @@ app.layout = html.Div([
                                                 html.H2(id=STREETNAME_DIV[1], className="graph-title"),
                                                 html.Div(id = GRAPHDIVS[1],children=dcc.Graph(id=GRAPHS[1])),
                                                 html.Div(children=[LEGEND]),
-                                                #html.H3(id = 'baseline-description', children=
-                                                 #       'All routes have the baseline of September 1,2019 to October 12, 2019 except for TTC trackwork at Kingston/Woodbine and Queen with a baseline of August 1, 2019 to September 7, 2019.')                     
-                                                ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
+                                                 ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
        
-                    ],className="reverse-stack"),
+                        ],className="reverse-stack"),
                 dbc.Row(
                     [dbc.Col(
-                        html.H3(id = 'baseline-description', 
-                                children='All routes have the baseline of September 1,2019 to October 12, 2019 except for TTC trackwork at Kingston/Woodbine and Queen with a baseline of August 1, 2019 to September 7, 2019.',
+                            html.H3(id = 'baseline-description', 
+                                children='Baseline: Aug 1 - Sep 7 2019 (routes affected by TTC Trackwork at Kingston/Woodbine and Queen), Sep 1 - Oct 14 2019 (all other routes)',
                                 className="baseline-description"
                                     )
                         , width={"size":4}, sm=12, xs=12, md=12, lg=4),
                      dbc.Col(
-                       (html.Footer(children=html.H3(['Created by the ',
+                            (html.Footer(children=html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
                                                          href="https://www.toronto.ca/services-payments/streets-parking-transportation/road-safety/big-data-innovation-team/")],
                                                          style={'text-align':'right',
