@@ -5,12 +5,6 @@ from airflow.hooks.base_hook import BaseHook
 from airflow.hooks.postgres_hook import PostgresHook
 from airflow.contrib.operators.slack_webhook_operator import SlackWebhookOperator
 
-heroku_conn = BaseHook.get_connection("heroku_token")
-heroku_token = heroku_conn.password
-
-heroku_postgres = PostgresHook("heroku_postgres")
-heroku_con = heroku_postgres.get_uri()
-
 heroku_bot = PostgresHook("heroku_bot_rds")
 rds_con = heroku_bot.get_uri()
 
