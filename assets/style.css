@@ -91,7 +91,7 @@
   border-bottom: 0px !important;
   background-color: #fafbfc;
   padding: 6px !important;
-  font-family: "system-ui";
+  font-family: 'Libre Franklin', sans-serif;
   display: flex !important;
   align-items: center;
   justify-content: center;
@@ -102,7 +102,7 @@
   box-shadow: 1px 1px 0px white;
   border-left: 1px solid lightgrey !important;
   border-right: 1px solid lightgrey !important;
-  border-top: 3px solid #e36209 !important;
+  border-top: 3px solid #ec9f09 !important;
 }
 
 /* Table Styling */
