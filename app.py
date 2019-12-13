@@ -57,6 +57,8 @@ DATA = pandasql.read_sql('''
                                         ORDER BY d1.street) n	
                             ON n.street = d.street AND ( (n.start_cross = d.start_crossstreet AND n.end_cross = d.end_crossstreet) OR (n.start_cross = d.end_crossstreet AND n.end_cross = d.start_crossstreet)) 									
                             order by d.street, d.direction, start_crossstreet,time_range''', con)
+
+
 BASELINE = pandasql.read_sql('''SELECT COALESCE(name1, d.street || ': ' || d.from_intersection || ' and ' || d.to_intersection) as street,
 	                            COALESCE(name2, d.from_intersection || ' to ' || d.to_intersection) as street1, d.street as street_short,
                                 d.direction, from_intersection, to_intersection,day_type, period, to_char(lower(period_range::TIMERANGE), 'FMHH AM')||' to '||to_char(upper(period_range::TIMERANGE), 'FMHH AM') as period_range , tt
@@ -72,6 +74,7 @@ BASELINE = pandasql.read_sql('''SELECT COALESCE(name1, d.street || ': ' || d.fro
                                 OR (n.start_cross = d.to_intersection AND n.end_cross = d.from_intersection))
 								order by time_range									
                             ''',con)
+
 HOLIDAY = pandasql.read_sql(''' SELECT dt FROM ref.holiday WHERE dt >= '2019-08-01' ''', con, parse_dates=['dt',])
 
 # Numbering Weeks and Months for Dropdown Selectors
@@ -153,17 +156,13 @@ DIRECTIONS = OrderedDict(dvp=['Northbound', 'Southbound'],
                          front=['Eastbound', 'Westbound'],
                          wellington=['Eastbound', 'Westbound'],)
 
-#STREETS_SUFFIX = BASELINE[['street', 'street_suffix']].drop_duplicates()
-
-DATERANGE = [DATA['date'].min(), DATA['date'].max()]
-
 #Time periods for each day type, derived from the baseline dataframe
 TIMEPERIODS = BASELINE[['day_type','period','period_range']].drop_duplicates()
 
 #Find the most recent weekday as default value for select date
 DATA.date = pd.to_datetime(DATA.date)
-MOST_RECENT_WEEKDAY = DATA[DATA['date'].dt.weekday <5]['date'].max().date()
-
+MOST_RECENT_WEEKDAY = DATA[DATA['date'].dt.weekday <5]['date'].max()
+DATERANGE = [DATA['date'].min(), DATA['date'].max()]
 # Threshold for changing the colour of cells in the table based on difference 
 # from the baseline in minutes
 THRESHOLD = 1
@@ -248,7 +247,7 @@ server.secret_key = os.environ.get('SECRET_KEY', 'my-secret-key')
 
 # Logging format & Setting up logging
 FORMAT = '%(asctime)s %(name)-2s %(levelname)-2s %(message)s'
-logging.basicConfig(level=logging.DEBUG, format=FORMAT)
+logging.basicConfig(level=logging.WARNING, format=FORMAT)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -315,15 +314,17 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
             date_picked = date_range_id
         else:
             date_picked = WEEKS[WEEKS['week_number'] == date_range_id]['week'].iloc[0]
-        
-        start_of_week = date_picked - relativedelta(days=date_picked.weekday())
+        start_of_week = pd.to_datetime(date_picked - relativedelta(days=date_picked.weekday()))
         start_range = max(start_of_week - relativedelta(weeks=1), DATERANGE[0])
-        if date_picked < date(2019,7,7):
+        date_picked = pd.to_datetime(date_picked)
+
+        if date_picked < pd.to_datetime('2019-07-07'):
             end_range = min(start_of_week + relativedelta(weeks=2), DATERANGE[1] + relativedelta(days=1))
         else:    
             end_range = min(start_of_week + relativedelta(weeks=1), DATERANGE[1] + relativedelta(days=1))
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
-        date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0].date()
+        date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0]
+        date_picked = pd.to_datetime(date_picked)
         # End of data within month picked and have less than 14 days of data, display 14 days of data of last month
         if date_picked == DATERANGE[1].replace(day=1) and DATERANGE[1].day < 14:
             start_range = max(date_picked - relativedelta(days=date_picked.day - 1) - relativedelta(days=14), DATERANGE[0])
@@ -384,12 +385,6 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
                                 ~(selected_filter)]
 
     return (base_line, base_line_data, pilot_data, data_selected, max_tt)
-
-def get_orientation_from_dir(direction):
-    '''Get the orientation of the street based on its direction'''
-    for orientation, direction_list in DIRECTIONS.items():
-        if direction in direction_list:
-            return orientation
 
 def get_timeperiods_for_date(selected_date):
     '''Get available timeperiods for the selected date'''
@@ -477,7 +472,7 @@ def generate_row(df_row, baseline_row, selected, orientation='dvp', baseline_sta
             baseline_val = nan 
         try:
             after_val =  df_row[DIRECTIONS[orientation][i]]
-        except KeyError or TypeError:
+        except (KeyError, TypeError):
             after_val = nan 
         data_cells.extend(generate_direction_cells(baseline_val, after_val, baseline_state))
     table_street = DATA[DATA['street'] == df_row['street']]['street1'].iloc[0]
@@ -529,7 +524,9 @@ def generate_table(selected_street, day_type, period, orientation='dvp', dateran
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
-        date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0].date()
+        LOGGER.debug(date_range_id)
+        date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0]
+
         day = date_picked.strftime("%b '%y")
 
     rows = []
@@ -562,8 +559,8 @@ def generate_table(selected_street, day_type, period, orientation='dvp', dateran
                         rows, id='data_table')
     elif baseline_state ==2:
         return html.Table(
-                        [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], colSpan=1), html.Td(DIRECTIONS[orientation][1], colSpan=1)])] +
-                        [html.Tr([html.Td(""), html.Td(day), html.Td(day)])] +
+                        [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=1), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=1)])] +
+                        [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(day, className='date-title')])] +
                         rows, id='data_table')                  
 
 def generate_graph_data(data, **kwargs):
@@ -587,8 +584,6 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
                                                                           period,
                                                                           daterange_type,
                                                                           date_range_id)
-
-    orientation = get_orientation_from_dir(direction)
     data = []
     if DATERANGE_TYPES[daterange_type] == 'Select Date' or DATERANGE_TYPES[daterange_type] == 'Select Week':
         tick_number = 13
@@ -597,7 +592,7 @@ def generate_figure(street, direction, day_type='Weekday', period='AMPK',
 
     if after_df.empty:
         if selected_df.empty and base_df.empty:
-            LOGGER.warning('No data to display on graph')
+            LOGGER.debug('No data to display on graph')
             return None
     else:
         pilot_data = generate_graph_data(after_df,
@@ -891,7 +886,7 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
     '''Assign time period radio button options based on select day type
     '''
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
-        selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+        selected_date = pd.to_datetime(selected_date).normalize()
         return [{'label': period, 'value': period}
                 for period
                 in get_timeperiods_for_date(selected_date)]
@@ -934,7 +929,7 @@ def assign_default_timperiod(selected_date, day_type='Weekday',
     '''Assign the time period radio button selected option based on selected day type
     '''
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
-        selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
+        selected_date = pd.to_datetime(selected_date).normalize()
         available_timeperiods = get_timeperiods_for_date(selected_date)
         if current_timeperiod in available_timeperiods:
             return current_timeperiod
@@ -949,7 +944,7 @@ def assign_default_timperiod(selected_date, day_type='Weekday',
                       State(CONTROLS['day_types'], 'value')])
 def update_day_type(date_picked, daterange_type, day_type):
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
-        dt = datetime.strptime(date_picked, '%Y-%m-%d').date()
+        dt = pd.to_datetime(date_picked).normalize()
         if dt.weekday() > 4:
             return 'Weekend'
         else: 
@@ -966,7 +961,7 @@ def update_day_type(date_picked, daterange_type, day_type):
                Input('tabs', 'value'),
                Input("baseline-toggle", 'value')],
               [State(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()])
-def update_table(period, day_type, daterange_type, date_range_id, date_picked=datetime.today().date(), orientation='dvp', baseline_state=1, *state_data):
+def update_table(period, day_type, daterange_type, date_range_id, date_picked=MOST_RECENT_WEEKDAY, orientation='dvp', baseline_state=1, *state_data):
     '''Generate HTML table of before-after travel times based on selected
     day type, time period, and remember which row was previously selected
     '''
@@ -976,7 +971,7 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=da
                  + ', date_range_id ' + str(date_range_id) 
                  + ', orientation  ' + str(orientation)     )
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
-        date_range_id = datetime.strptime(date_picked, '%Y-%m-%d').date()
+       date_range_id = pd.to_datetime(date_picked).normalize()
     state_index = list(STREETS.keys()).index(orientation)
     selected_street = state_data[state_index]
 
@@ -1031,8 +1026,8 @@ def generate_date_range_for_type(daterange_type):
 def update_date_range_value(daterange_type, date_range_id):
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
         date_range_id        
-    if not RANGES[daterange_type].empty and date_range_id <= len(RANGES[daterange_type]):
-        return date_range_id
+    #if not RANGES[daterange_type].empty and date_range_id <= len(RANGES[daterange_type]):
+    #    return date_range_id
     elif  DATERANGE_TYPES[daterange_type] == 'Select Week':
         return WEEKS['week_number'].iloc[0]    
     elif  DATERANGE_TYPES[daterange_type] == 'Select Month':
@@ -1141,7 +1136,7 @@ def create_update_graph_div(graph_number):
         *selected_streets, daterange_type, date_range, baseline_state, date_picked = args
         #Use the input for the selected street from the orientation of the current tab
         if DATERANGE_TYPES[daterange_type] == 'Select Date':
-            date_range = datetime.strptime(date_picked, '%Y-%m-%d').date()
+            date_range = pd.to_datetime(date_picked).normalize()
         
         street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
         LOGGER.debug('Updating graph %s, for street: %s, period: %s, day_type: %s, daterange_type: %s, date_range: %s',
