@@ -47,7 +47,7 @@ default_args = {
 }
 
 dag = DAG('update_gardiner_view', 
- schedule_interval='0 3 * * 1-7', 
+ schedule_interval='30 7 * * 1-7', 
  default_args=default_args 
  ) 
 
