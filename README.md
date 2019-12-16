@@ -8,6 +8,15 @@ The layout of the code is inspired by the Model-View-Controller paradigm, specif
 
 In addition to some of the plot styling being in these variables, [two css stylesheets](https://github.com/CityofToronto/bdit_traffic_dashboard/tree/master/assets) are loaded from local files.
 
+
+## Current list of deployed dashboards
+
+| Location | Dashboard Name                     | Branch             | Description                                                                                                                          |
+|----------|------------------------------------|--------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| Heroku   | Richmond Watermain Closure         | richmond-watermain | Monitor travel time impact of the [Richmond Street West Watermain Replacement project](https://www.toronto.ca/community-people/get-involved/public-consultations/infrastructure-projects/downtown-construction-projects/) from York to Bathurst started on July 22, 2019. |
+| EC2      | Gardiner Expressway Rehabilitation | gardiner           | Monitor travel time impact of the [Gardiner Expressway Rehabilitation project](https://www.toronto.ca/community-people/get-involved/public-consultations/infrastructure-projects/downtown-construction-projects/) from Jarvis to Cherry Street started on Oct 14, 2019.   |
+
+
 ### Detecting row clicks
 
 This is handled by the `row_click` function, which is fired when the number of
