@@ -85,7 +85,6 @@ WEEKS['label'] = 'Week ' + WEEKS['week_number'].astype(str) + ': ' + WEEKS['week
 
 MONTHS['label'] = MONTHS['month'].dt.strftime("%b '%y")
 
-
 #Range types: Latest Day, Select Date, WEEKS, MONTHS
 RANGES = [pd.DataFrame(), pd.DataFrame(), WEEKS, MONTHS]
 con.close()
