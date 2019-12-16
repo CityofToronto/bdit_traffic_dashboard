@@ -238,7 +238,7 @@ server = app.server
 # TODO: change this to the path where this will live on the EC2, this also 
 # needs to detect if it's operated in Heroku
 app.config.update({
-         'requests_pathname_prefix': '/richmond-watermain/',
+         'requests_pathname_prefix': '/gardiner-rehab/',
  })
 
 # Something for heroku
@@ -516,7 +516,6 @@ def generate_table(selected_street, day_type, period, orientation='dvp', dateran
             day = filtered_data['date'].iloc[0].strftime('%a %b %d')
         except IndexError:
             day = date_range_id.strftime('%a %b %d')
-            LOGGER.warning(day + ' has no data')
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
@@ -763,7 +762,10 @@ STREETS_LAYOUT = html.Div(children=[
                             html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['dvp'], 'Weekday', 'AM Peak'), className="data-table"),
                             html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline'], className="tt-long"),
                             html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline'], className="tt-short"), 
-                                             
+                            html.H3(id = 'baseline-description', 
+                                children='Baseline: Aug 1 - Sep 7 2019 (routes affected by TTC Trackwork at Kingston/Woodbine and Queen), Sep 1 - Oct 14 2019 (all other routes)',
+                                className="baseline-description"
+                                    )                 
                     ])
         ])                    
 
@@ -804,15 +806,9 @@ app.layout = html.Div([
                                                 html.Div(children=[LEGEND]),
                                                  ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
        
-                        ],className="reverse-stack"),
-                dbc.Row(
-                    [dbc.Col(
-                            html.H3(id = 'baseline-description', 
-                                children='Baseline: Aug 1 - Sep 7 2019 (routes affected by TTC Trackwork at Kingston/Woodbine and Queen), Sep 1 - Oct 14 2019 (all other routes)',
-                                className="baseline-description"
-                                    )
-                        , width={"size":4}, sm=12, xs=12, md=12, lg=4),
-                     dbc.Col(
+                        ],className="reverse-stack"),  
+                dbc.Row(        
+                     [dbc.Col(
                             (html.Footer(children=html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
                                                          href="https://www.toronto.ca/services-payments/streets-parking-transportation/road-safety/big-data-innovation-team/")],
