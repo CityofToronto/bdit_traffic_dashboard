@@ -387,13 +387,10 @@ def filter_graph_data(street, direction, day_type='Weekday', period='AMPK',
 
 def get_timeperiods_for_date(selected_date):
     '''Get available timeperiods for the selected date'''
-    timeperiods = DATA[DATA['date']==selected_date]['period'].unique()
     if selected_date.weekday() > 4: #Weekend
-        return TIMEPERIODS[(TIMEPERIODS['day_type']=='Weekend')&
-                           (TIMEPERIODS['period'].isin(timeperiods))]['period'].values
+        return TIMEPERIODS[(TIMEPERIODS['day_type']=='Weekend')]['period'].unique()
     else:
-        return TIMEPERIODS[(TIMEPERIODS['day_type']=='Weekday')&
-                           (TIMEPERIODS['period'].isin(timeperiods))]['period'].values
+        return TIMEPERIODS[(TIMEPERIODS['day_type']=='Weekday')]['period'].unique()
 
 ###################################################################################################
 #                                                                                                 #
