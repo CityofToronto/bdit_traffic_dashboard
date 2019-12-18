@@ -238,7 +238,7 @@ server = app.server
 # TODO: change this to the path where this will live on the EC2, this also 
 # needs to detect if it's operated in Heroku
 app.config.update({
-         'requests_pathname_prefix': '/gardiner-rehab/',
+         'requests_pathname_prefix': '/richmond-watermain/',
  })
 
 # Something for heroku
@@ -256,7 +256,7 @@ LOGGER = logging.getLogger(__name__)
 #                                                                                                 #
 ###################################################################################################
 
-def pivot_order(df, orientation = 'dvp', date_range_type=1):
+def pivot_order(df, orientation = 'gardiner', date_range_type=1):
     '''Pivot the dataframe around street directions and order by STREETS global var
     '''
     if DATERANGE_TYPES[date_range_type] == 'Select Date' and     'date' in df.columns:
@@ -282,7 +282,7 @@ def selected_data(data, daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
         date_filter = data['month_number'] == date_range_id
     return date_filter
 
-def filter_table_data(period, day_type, orientation='dvp', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
+def filter_table_data(period, day_type, orientation='gardiner', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     '''Return data aggregated and filtered by period, day type, tab, date range
     '''
 
@@ -448,7 +448,7 @@ def after_cell_class(before, after):
     else:
         return 'same'
 
-def generate_row(df_row, baseline_row, selected, orientation='dvp', baseline_state=1):
+def generate_row(df_row, baseline_row, selected, orientation='gardiner', baseline_state=1):
     """Create an HTML row from a database row (each street)
 
         :param df_row:
@@ -483,7 +483,7 @@ def generate_row(df_row, baseline_row, selected, orientation='dvp', baseline_sta
                     id=df_row['street'],
                     className=generate_row_class(selected))                
 
-def generate_table(selected_street, day_type, period, orientation='dvp', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY, baseline_state=1):
+def generate_table(selected_street, day_type, period, orientation='gardiner', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY, baseline_state=1):
     """Generate HTML table of streets and before-after values
 
         :param selected_street:
@@ -759,7 +759,7 @@ STREETS_LAYOUT = html.Div(children=[
                         ),
                     html.Div([    
                             html.Div(id=TABLE_TITLE, className="table-title"),
-                            html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['dvp'], 'Weekday', 'AM Peak'), className="data-table"),
+                            html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['gardiner'], 'Weekday', 'AM Peak'), className="data-table"),
                             html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline'], className="tt-long"),
                             html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline'], className="tt-short"), 
                             html.H3(id = 'baseline-description', 
@@ -778,17 +778,17 @@ app.layout = html.Div([
             dbc.Row(
                 dbc.Col([html.Div(
                         dcc.Tabs(children=[
-                                    dcc.Tab(label='DVP', value='dvp',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Gardiner', value='gardiner',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Lakeshore', value='lakeshore',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Adelaide', value='adelaide',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Richmond', value='richmond',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Eastern', value='eastern',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Front', value='front',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='DVP', value='dvp',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Queen', value='queen',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Richmond', value='richmond',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Adelaide', value='adelaide',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Wellington', value='wellington',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Front', value='front',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Eastern', value='eastern',className='custom-tab',selected_className='custom-tab--selected'),
                                     ],
-                                    value='dvp',
+                                    value='gardiner',
                                     id='tabs',
                                     ),className="hide-on-print")], width=12)
                     ),
@@ -953,7 +953,7 @@ def update_day_type(date_picked, daterange_type, day_type):
                Input('tabs', 'value'),
                Input("baseline-toggle", 'value')],
               [State(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()])
-def update_table(period, day_type, daterange_type, date_range_id, date_picked=MOST_RECENT_WEEKDAY, orientation='dvp', baseline_state=1, *state_data):
+def update_table(period, day_type, daterange_type, date_range_id, date_picked=MOST_RECENT_WEEKDAY, orientation='gardiner', baseline_state=1, *state_data):
     '''Generate HTML table of before-after travel times based on selected
     day type, time period, and remember which row was previously selected
     '''
