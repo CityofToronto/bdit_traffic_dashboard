@@ -151,12 +151,12 @@ STREETS = OrderedDict(dvp=['DVP: Dundas and Bayview Ramp',
 DIRECTIONS = OrderedDict(dvp=['Northbound', 'Southbound'],
                          gardiner=['Eastbound', 'Westbound'],
                          queen=['Eastbound', 'Westbound'],
-                         adelaide=['Eastbound', 'Westbound'],
-                         richmond=['Eastbound', 'Westbound'],
+                         adelaide=['Eastbound',],
+                         richmond=['Westbound'],
                          eastern=['Eastbound', 'Westbound'],
                          lakeshore=['Eastbound', 'Westbound'],
                          front=['Eastbound', 'Westbound'],
-                         wellington=['Eastbound', 'Westbound'],)
+                         wellington=['Westbound'],)
 
 #Time periods for each day type, derived from the baseline dataframe
 TIMEPERIODS = BASELINE[['day_type','period','period_range']].drop_duplicates()
@@ -463,18 +463,19 @@ def generate_row(df_row, baseline_row, selected, orientation='gardiner', baselin
     """
 
     data_cells = []
+    table_street = DATA[DATA['street'] == df_row['street']]['street1'].iloc[0]
 
-    for i in range(2):
+    for i in range(len(DIRECTIONS[orientation])):
         try:
             baseline_val = baseline_row[DIRECTIONS[orientation][i]]
         except KeyError:
-            baseline_val = nan 
+            baseline_val = nan
         try:
             after_val =  df_row[DIRECTIONS[orientation][i]]
         except (KeyError, TypeError):
             after_val = nan 
         data_cells.extend(generate_direction_cells(baseline_val, after_val, baseline_state))
-    table_street = DATA[DATA['street'] == df_row['street']]['street1'].iloc[0]
+    
     if baseline_state ==1:
         return html.Tr([html.Td(table_street, className='segname'), 
                     *data_cells],
@@ -549,17 +550,28 @@ def generate_table(selected_street, day_type, period, orientation='gardiner', da
                             orientation,
                             baseline_state)                                   
         rows.append(row) 
-
-    if baseline_state ==1:
-        return html.Table(
-                        [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=2), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=2)])] +
-                        [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title'), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title')])] +
-                        rows, id='data_table')
-    elif baseline_state ==2:
-        return html.Table(
-                        [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=1), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=1)])] +
-                        [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(day, className='date-title')])] +
-                        rows, id='data_table')                  
+    if len(DIRECTIONS[orientation]) == 1:
+        if baseline_state ==1:
+            return html.Table(
+                            [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=2)])] +
+                            [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title')])] +
+                            rows, id='data_table')
+        elif baseline_state ==2:
+            return html.Table(
+                            [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=1)])] +
+                            [html.Tr([html.Td(""), html.Td(day, className='date-title')])] +
+                            rows, id='data_table')    
+    else:                            
+        if baseline_state ==1:
+            return html.Table(
+                            [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=2), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=2)])] +
+                            [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title'), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title')])] +
+                            rows, id='data_table')
+        elif baseline_state ==2:
+            return html.Table(
+                            [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=1), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=1)])] +
+                            [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(day, className='date-title')])] +
+                            rows, id='data_table')                  
 
 def generate_graph_data(data, **kwargs):
     return dict(x=data['date'],
@@ -1130,28 +1142,31 @@ def create_update_graph_div(graph_number):
         '''
         *selected_streets, daterange_type, date_range, baseline_state, date_picked = args
         #Use the input for the selected street from the orientation of the current tab
-        if DATERANGE_TYPES[daterange_type] == 'Select Date':
-            date_range = pd.to_datetime(date_picked).normalize()
-        
-        street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
-        LOGGER.debug('Updating graph %s, for street: %s, period: %s, day_type: %s, daterange_type: %s, date_range: %s',
-                     GRAPHS[graph_number], street, period, day_type, daterange_type, date_range)
-        figure = generate_figure(street,
-                                 DIRECTIONS[orientation][graph_number],
-                                 period=period,
-                                 day_type=day_type,
-                                 daterange_type=daterange_type,
-                                 date_range_id=date_range,
-                                 baseline_state=baseline_state)
-                                
-        if figure: 
-            return html.Div(dcc.Graph(id = GRAPHS[graph_number],
-                                      figure = figure,
-                                      config={'displayModeBar': False}
-                                                                        ))
-        else:
+        try:
+            if DATERANGE_TYPES[daterange_type] == 'Select Date':
+                date_range = pd.to_datetime(date_picked).normalize()
+            
+            street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
+            LOGGER.debug('Updating graph %s, for street: %s, period: %s, day_type: %s, daterange_type: %s, date_range: %s',
+                        GRAPHS[graph_number], street, period, day_type, daterange_type, date_range)
+            figure = generate_figure(street,
+                                    DIRECTIONS[orientation][graph_number],
+                                    period=period,
+                                    day_type=day_type,
+                                    daterange_type=daterange_type,
+                                    date_range_id=date_range,
+                                    baseline_state=baseline_state)
+                                    
+            if figure: 
+                return html.Div(dcc.Graph(id = GRAPHS[graph_number],
+                                        figure = figure,
+                                        config={'displayModeBar': False}
+                                                                            ))
+            else:
+                return html.Div(className = 'nodata')
+        except IndexError:
             return html.Div(className = 'nodata')
-
+                    
     update_graph.__name__ = 'update_graph_' + GRAPHS[graph_number]
     return update_graph
 
