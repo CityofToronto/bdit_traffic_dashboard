@@ -777,7 +777,10 @@ STREETS_LAYOUT = html.Div(children=[
                             html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['gardiner'], 'Weekday', 'AM Peak'), className="data-table"),
                             html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline'], className="tt-long"),
                             html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline'], className="tt-short"), 
-                            html.Div(children=[html.B('Baseline: '), html.Span(id = BASELINE_DESC)], className="baseline-description")                         
+                            html.H3(id = 'baseline-description', 
+                                children='Baseline: Sep 1 - Oct 14 2019, and Aug 1 - Sep 7 2019 for routes affected by TTC Trackwork at Kingston/Woodbine and Queen',
+                                className="baseline-description"
+                                    )                               
                     ])
         ])                    
 
@@ -854,8 +857,7 @@ def display_streets(value):
 @app.callback([Output('baseline-description', 'style'),
                Output('tt-long', 'style'),
                Output('tt-short', 'style')],
-              [Input("baseline-toggle", 'value'),
-               Input('tabs', 'value')],)
+              [Input("baseline-toggle", 'value')],)
 def display_baseline(value):
     '''If baseline is clicked then display baseline description'''
     if value == 1:
@@ -902,8 +904,7 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
                 in TIMEPERIODS[TIMEPERIODS['day_type'] == day_type]['period']]
 
 
-@app.callback([Output(BASELINE_DESC, 'children'),
-                Output(STEP2, 'children'),
+@app.callback([Output(STEP2, 'children'),
                 Output(TABLE_TITLE, 'children')],
               [Input(CONTROLS['date_picker'], 'date'),
                Input(CONTROLS['day_types'], 'value'),
@@ -911,10 +912,7 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
                Input('tabs', 'value')]) 
 def generate_step_two(selected_date, day_type, daterange_type, tabs):
     tabs_name = DATA[DATA['street'] == STREETS[tabs][0]]['street_short'].iloc[0]
-    if tabs == 'queen' or tabs == 'eastern':
-        baseline_desc = ' Sep 1 - Oct 14 2019, and Aug 1 - Sep 7 2019 for routes affected by TTC Trackwork at Kingston/Woodbine and Queen'
-    else:
-        baseline_desc = ' Sep 1 - Oct 14 2019'    
+
     if DATERANGE_TYPES[daterange_type] == 'Select Date': 
         step2 =  'Step 2: Select the date'
         table_title = str(tabs_name) + ' - Average Daily Travel Time (mins)'
@@ -925,7 +923,7 @@ def generate_step_two(selected_date, day_type, daterange_type, tabs):
         step2 = 'Step 2: Select the month'
         table_title = str(tabs_name) + ' - Average Monthly Travel Time (mins)'
 
-    return baseline_desc, step2, table_title
+    return step2, table_title
 
 
 
