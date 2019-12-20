@@ -198,6 +198,7 @@ SELECTED_STREET_DIVS = OrderedDict([(orientation, 'selected-street' + orientatio
 TABLE_DIV_ID = 'div-table'
 TIMEPERIOD_DIV = 'timeperiod'
 STEP2 = 'step2'
+BASELINE_DESC = 'baseline_desc'
 STREET_TITLE = 'street-title'
 TABLE_TITLE = 'table-title'
 TIME_TITLE = 'time-title'
@@ -516,9 +517,9 @@ def generate_table(selected_street, day_type, period, orientation='gardiner', da
     #Current date for the data, to replace "After" header
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
         try:
-            day = filtered_data['date'].iloc[0].strftime("%b %d, '%y")
+            day = filtered_data['date'].iloc[0].strftime('%a %b %d')
         except IndexError:
-            day = date_range_id.strftime("%b %d, '%y")
+            day = date_range_id.strftime('%a %b %d')
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
@@ -776,10 +777,7 @@ STREETS_LAYOUT = html.Div(children=[
                             html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['gardiner'], 'Weekday', 'AM Peak'), className="data-table"),
                             html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline'], className="tt-long"),
                             html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline'], className="tt-short"), 
-                            html.H3(id = 'baseline-description', 
-                                children='Baseline: Sep 1 - Oct 14 2019, and Aug 1 - Sep 7 2019 for routes affected by TTC Trackwork at Kingston/Woodbine and Queen',
-                                className="baseline-description"
-                                    )                 
+                            html.Div(children=[html.B('Baseline: '), html.Span(id = BASELINE_DESC)], className="baseline-description")                         
                     ])
         ])                    
 
@@ -856,13 +854,15 @@ def display_streets(value):
 @app.callback([Output('baseline-description', 'style'),
                Output('tt-long', 'style'),
                Output('tt-short', 'style')],
-              [Input("baseline-toggle", 'value')],)
+              [Input("baseline-toggle", 'value'),
+               Input('tabs', 'value')],)
 def display_baseline(value):
     '''If baseline is clicked then display baseline description'''
     if value == 1:
         return {'display':'inline'}, {'display':'block'}, {'display':'block'}
     else:
-        return {'display':'none'}, {'display':'none'}, {'display':'none'}        
+        return {'display':'none'}, {'display':'none'}, {'display':'none'}                      
+
 
 @app.callback(Output(CONTROLS['div_id'], 'style'),
               [Input(CONTROLS['toggle'], 'n_clicks')],
@@ -902,7 +902,8 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
                 in TIMEPERIODS[TIMEPERIODS['day_type'] == day_type]['period']]
 
 
-@app.callback([Output(STEP2, 'children'),
+@app.callback([Output(BASELINE_DESC, 'children'),
+                Output(STEP2, 'children'),
                 Output(TABLE_TITLE, 'children')],
               [Input(CONTROLS['date_picker'], 'date'),
                Input(CONTROLS['day_types'], 'value'),
@@ -910,7 +911,10 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
                Input('tabs', 'value')]) 
 def generate_step_two(selected_date, day_type, daterange_type, tabs):
     tabs_name = DATA[DATA['street'] == STREETS[tabs][0]]['street_short'].iloc[0]
-    
+    if tabs == 'queen' or tabs == 'eastern':
+        baseline_desc = ' Sep 1 - Oct 14 2019, and Aug 1 - Sep 7 2019 for routes affected by TTC Trackwork at Kingston/Woodbine and Queen'
+    else:
+        baseline_desc = ' Sep 1 - Oct 14 2019'    
     if DATERANGE_TYPES[daterange_type] == 'Select Date': 
         step2 =  'Step 2: Select the date'
         table_title = str(tabs_name) + ' - Average Daily Travel Time (mins)'
@@ -921,7 +925,7 @@ def generate_step_two(selected_date, day_type, daterange_type, tabs):
         step2 = 'Step 2: Select the month'
         table_title = str(tabs_name) + ' - Average Monthly Travel Time (mins)'
 
-    return step2, table_title
+    return baseline_desc, step2, table_title
 
 
 
