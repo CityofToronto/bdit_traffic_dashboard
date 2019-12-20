@@ -517,9 +517,9 @@ def generate_table(selected_street, day_type, period, orientation='gardiner', da
     #Current date for the data, to replace "After" header
     if DATERANGE_TYPES[daterange_type] == 'Select Date':
         try:
-            day = filtered_data['date'].iloc[0].strftime("%a %b, '%d")
+            day = filtered_data['date'].iloc[0].strftime("%b %d, '%y")
         except IndexError:
-            day = date_range_id.strftime("%a %b, '%d")
+            day = date_range_id.strftime("%b %d, '%y")
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
