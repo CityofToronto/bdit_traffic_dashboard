@@ -346,7 +346,7 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
             
     else:
         raise ValueError('Wrong daterange_type provided: {}'.format(daterange_type))
-    LOGGER.debug('Filtering for %s. Date picked: %s, Start Range: %s, End Range: %s',
+    LOGGER.warning('Filtering for %s. Date picked: %s, Start Range: %s, End Range: %s',
                  DATERANGE_TYPES[daterange_type], date_picked, start_range, end_range)
     return [start_range, end_range]
 
@@ -794,8 +794,8 @@ app.layout = html.Div([
                 dbc.Col([html.Div(
                         dcc.Tabs(children=[
                                     dcc.Tab(label='Gardiner', value='gardiner',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Lakeshore', value='lakeshore',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='DVP', value='dvp',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Lakeshore', value='lakeshore',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Queen', value='queen',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Richmond', value='richmond',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Adelaide', value='adelaide',className='custom-tab',selected_className='custom-tab--selected'),
