@@ -130,6 +130,13 @@
   background-color: #165788;
   width: 100%;
 }
+
+@media (max-width:80em){
+  .print-button{
+    display:none;
+  }
+}
+
 @media screen {
   .onlyprint {
     display:none;
