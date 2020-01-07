@@ -775,7 +775,7 @@ STREETS_LAYOUT = html.Div(children=[
                         ),
                     html.Div([    
                             html.Div(id=TABLE_TITLE, className="table-title"),
-                            html.Div(id=PRINT_TITLE, className="onlyprint"),
+                            html.Div(id=PRINT_TITLE, className="onlyprint-table"),
                             html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['gardiner'], 'Weekday', 'AM Peak'), className="data-table"),
                             html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline'], className="tt-long"),
                             html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline'], className="tt-short"), 
