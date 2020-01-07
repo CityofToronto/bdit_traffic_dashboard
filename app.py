@@ -705,7 +705,7 @@ LEGEND = html.Div(children = [html.Div(className="box_baseline", style={'display
 STREETS_LAYOUT = html.Div(children=[
         html.Div(children=[
                     html.Button(id=CONTROLS['toggle'], children='Show Filters', style = {'margin-right':'5px'}),
-                    html.Button("Generate PDF", id='print-button')]
+                    html.Button("Print View", id='print-button')]
                 , className="hide-on-print", style={'margin-top':'5px'}),  
         html.Div(
             id=CONTROLS['div_id'],
