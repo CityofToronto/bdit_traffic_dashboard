@@ -821,7 +821,7 @@ app.layout = html.Div([
                                                 html.Div(children=[LEGEND]),
                                                  ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
        
-                        ],className="reverse-stack"),  
+                        ]),  
                 dbc.Row(        
                      [dbc.Col(
                             (html.Footer(children=html.H3(['Created by the ',
