@@ -95,7 +95,7 @@ con.close()
 #                                                                                                 #
 ###################################################################################################
 
-TITLE = 'Gardiner Expressway Rehabilitation - Travel Time Impact'
+TITLE = 'Gardiner Expressway Rehabilitation - Travel Time Monitoring'
 
 # Data management constants
 
@@ -241,7 +241,7 @@ server = app.server
 # TODO: change this to the path where this will live on the EC2, this also 
 # needs to detect if it's operated in Heroku
 app.config.update({
-         'requests_pathname_prefix': '/gardiner-rehab/',
+         'requests_pathname_prefix': '/richmond-watermain/',
  })
 
 # Something for heroku
@@ -709,7 +709,7 @@ STREETS_LAYOUT = html.Div(children=[
         html.Div(
             id=CONTROLS['div_id'],
                 children=[
-                    html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18, 'fontWeight':'bold'}, className="hide-on-print"),
+                    html.H3('Follow these steps to visualize and compare travel time:',style={'fontSize':18, 'fontWeight':'bold'}, className="hide-on-print"),
                     html.Div(
                         children=[
                                 html.H3('Step 1: Select the type of time period', style={'fontSize':16, 'marginTop': 10} ),
