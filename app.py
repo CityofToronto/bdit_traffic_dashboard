@@ -923,17 +923,17 @@ def generate_step_two(selected_date, day_type, daterange_type, timeperiod, date_
 
     if DATERANGE_TYPES[daterange_type] == 'Select Date': 
         step2 =  'Step 2: Select the date'
-        table_title = str(tabs_name) + ' - Average Daily Travel Time (mins)'
+        table_title = str(tabs_name) + ' - Average Daily Travel Time (min)'
         print_title = str(pd.to_datetime(selected_date).date()) + ', '+ str(time_range_title)
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         week_start = WEEKS[(WEEKS['week_number'] == date_range)].iloc[0]['week']
         week_end = week_start + pd.Timedelta('6 days')
         step2 = 'Step 2: Select the week'
-        table_title = str(tabs_name) + ' - Average Weekly Travel Time (mins)' 
+        table_title = str(tabs_name) + ' - Average Weekly Travel Time (min)' 
         print_title = str(week_start) + ' to ' + str(week_end) + ', '+ str(time_range_title)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         step2 = 'Step 2: Select the month'
-        table_title = str(tabs_name) + ' - Average Monthly Travel Time (mins)'
+        table_title = str(tabs_name) + ' - Average Monthly Travel Time (min)'
         print_title = str(MONTHS[(MONTHS['month_number'] == date_range)].iloc[0]['month'].strftime("%B %Y")) + ', '+ str(time_range_title)
     return step2, table_title, print_title
 
