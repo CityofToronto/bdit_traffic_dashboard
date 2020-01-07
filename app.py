@@ -780,7 +780,7 @@ STREETS_LAYOUT = html.Div(children=[
                             html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline'], className="tt-long"),
                             html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline'], className="tt-short"), 
                             html.H3(id = 'baseline-description', 
-                                children='Baseline: Sep 1 - Oct 14 2019, and Aug 1 - Sep 7 2019 for routes affected by TTC Trackwork at Kingston/Woodbine and Queen',
+                                children='Baseline: Sep 1 - Oct 14, 2019, and Aug 1 - Sep 7, 2019 for routes affected by TTC Trackwork at Kingston/Woodbine and Queen',
                                 className="baseline-description"
                                     )                               
                     ])
