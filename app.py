@@ -203,6 +203,7 @@ STREET_TITLE = 'street-title'
 TABLE_TITLE = 'table-title'
 TIME_TITLE = 'time-title'
 PRINT_TITLE = 'print-title'
+DATE_GENERATED = 'date-generated'
 CONTROLS = dict(div_id='controls-div',
                 toggle='toggle-controls-button',
                 baseline_toggle='baseline-toggle',
@@ -826,7 +827,7 @@ app.layout = html.Div([
                         ]),  
                 dbc.Row(        
                      [dbc.Col(
-                            (html.Footer(children=[html.H3('date generated', className="onlyprint"), 
+                            (html.Footer(children=[html.H2(id=DATE_GENERATED, className="onlyprint"), 
                                                     html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
                                                          href="https://www.toronto.ca/services-payments/streets-parking-transportation/road-safety/big-data-innovation-team/")],
@@ -909,7 +910,8 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
 
 @app.callback([Output(STEP2, 'children'),
                Output(TABLE_TITLE, 'children'),
-               Output(PRINT_TITLE, 'children')],
+               Output(PRINT_TITLE, 'children'),
+               Output(DATE_GENERATED, 'children')],
               [Input(CONTROLS['date_picker'], 'date'),
                Input(CONTROLS['day_types'], 'value'),
                Input(CONTROLS['date_range_type'], 'value'),
@@ -920,7 +922,7 @@ def generate_step_two(selected_date, day_type, daterange_type, timeperiod, date_
     tabs_name = DATA[DATA['street'] == STREETS[tabs][0]]['street_short'].iloc[0]
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
     time_range_title = day_type + ' ' + timeperiod + ' (' + time_range + ')'
-
+    date_generated = 'Date generated: '+ str(pd.Timestamp.today().date())
     if DATERANGE_TYPES[daterange_type] == 'Select Date': 
         step2 =  'Step 2: Select the date'
         table_title = str(tabs_name) + ' - Average Daily Travel Time (min)'
@@ -935,7 +937,7 @@ def generate_step_two(selected_date, day_type, daterange_type, timeperiod, date_
         step2 = 'Step 2: Select the month'
         table_title = str(tabs_name) + ' - Average Monthly Travel Time (min)'
         print_title = str(MONTHS[(MONTHS['month_number'] == date_range)].iloc[0]['month'].strftime("%B %Y")) + ', '+ str(time_range_title)
-    return step2, table_title, print_title
+    return step2, table_title, print_title, date_generated
 
 
 

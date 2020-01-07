@@ -146,6 +146,10 @@
   }
 }
 @media print {
+  footer {
+    position: fixed;
+    bottom: 0;
+  }
   .hide-on-print {display:none;}
   .reverse-stack {flex-direction: column-reverse;}
   .graph-period-title {
