@@ -815,7 +815,7 @@ app.layout = html.Div([
                     dbc.Col((                    
                             html.Div(id=MAIN_DIV, children=[STREETS_LAYOUT])), width={"size":4, "order":1}, sm=12, xs=12, md=12, lg=4),
                     dbc.Col(html.Div(children=[
-                                                html.H2(id=STREET_TITLE, style={'fontSize':30, 'fontWeight':'bold', 'fontColor':'black'}),
+                                                html.H2(id=STREET_TITLE, className="street-title"),
                                                 html.H2(id=TIME_TITLE, className="graph-period-title"),                  
                                                 html.H2(id=STREETNAME_DIV[0],className="graph-title"),
                                                 html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
