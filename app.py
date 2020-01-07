@@ -202,6 +202,7 @@ BASELINE_DESC = 'baseline_desc'
 STREET_TITLE = 'street-title'
 TABLE_TITLE = 'table-title'
 TIME_TITLE = 'time-title'
+PRINT_TITLE = 'print-title'
 CONTROLS = dict(div_id='controls-div',
                 toggle='toggle-controls-button',
                 baseline_toggle='baseline-toggle',
@@ -774,6 +775,7 @@ STREETS_LAYOUT = html.Div(children=[
                         ),
                     html.Div([    
                             html.Div(id=TABLE_TITLE, className="table-title"),
+                            html.Div(id=PRINT_TITLE, className="onlyprint"),
                             html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['gardiner'], 'Weekday', 'AM Peak'), className="data-table"),
                             html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline'], className="tt-long"),
                             html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline'], className="tt-short"), 
@@ -824,11 +826,12 @@ app.layout = html.Div([
                         ]),  
                 dbc.Row(        
                      [dbc.Col(
-                            (html.Footer(children=html.H3(['Created by the ',
+                            (html.Footer(children=[html.H3('date generated', className="onlyprint"), 
+                                                    html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
                                                          href="https://www.toronto.ca/services-payments/streets-parking-transportation/road-safety/big-data-innovation-team/")],
                                                          style={'text-align':'right',
-                                                                'padding-right':'1em'},className="hide-on-print"),
+                                                                'padding-right':'1em'},className="hide-on-print")],
                                ),
                        *[html.Div(id=div_id,
                                   style={'display': 'none'},
@@ -905,25 +908,34 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
 
 
 @app.callback([Output(STEP2, 'children'),
-                Output(TABLE_TITLE, 'children')],
+               Output(TABLE_TITLE, 'children'),
+               Output(PRINT_TITLE, 'children')],
               [Input(CONTROLS['date_picker'], 'date'),
                Input(CONTROLS['day_types'], 'value'),
                Input(CONTROLS['date_range_type'], 'value'),
+               Input(CONTROLS['timeperiods'], 'value'),
+               Input(CONTROLS['date_range'], 'value'),
                Input('tabs', 'value')]) 
-def generate_step_two(selected_date, day_type, daterange_type, tabs):
+def generate_step_two(selected_date, day_type, daterange_type, timeperiod, date_range, tabs):
     tabs_name = DATA[DATA['street'] == STREETS[tabs][0]]['street_short'].iloc[0]
+    time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
+    time_range_title = day_type + ' ' + timeperiod + ' (' + time_range + ')'
 
     if DATERANGE_TYPES[daterange_type] == 'Select Date': 
         step2 =  'Step 2: Select the date'
         table_title = str(tabs_name) + ' - Average Daily Travel Time (mins)'
+        print_title = str(pd.to_datetime(selected_date).date()) + ', '+ str(time_range_title)
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
+        week_start = WEEKS[(WEEKS['week_number'] == date_range)].iloc[0]['week']
+        week_end = week_start + pd.Timedelta('6 days')
         step2 = 'Step 2: Select the week'
         table_title = str(tabs_name) + ' - Average Weekly Travel Time (mins)' 
+        print_title = str(week_start) + ' to ' + str(week_end) + ', '+ str(time_range_title)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
         step2 = 'Step 2: Select the month'
         table_title = str(tabs_name) + ' - Average Monthly Travel Time (mins)'
-
-    return step2, table_title
+        print_title = str(MONTHS[(MONTHS['month_number'] == date_range)].iloc[0]['month'].strftime("%B %Y")) + ', '+ str(time_range_title)
+    return step2, table_title, print_title
 
 
 
