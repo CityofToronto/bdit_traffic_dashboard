@@ -492,7 +492,10 @@ def generate_row(df_row, baseline_row, selected, orientation='gardiner', baselin
     """
 
     data_cells = []
-    table_street = DATA[DATA['street'] == df_row['street']]['street1'].iloc[0]
+    if DATA[DATA['street'] == df_row['street']]['street1'].iloc[0] == 'summary to summary':
+        table_street = 'Total Travel Time'
+    else:
+        table_street = DATA[DATA['street'] == df_row['street']]['street1'].iloc[0]
 
     for i in range(len(DIRECTIONS[orientation])):
         try:
@@ -1161,8 +1164,12 @@ def create_update_street_name(dir_id):
         except IndexError:
             return html.Div(className = 'nodata')
         else:
-            return [html.B(DIRECTIONS[orientation][dir_id] + ': '),
-                    'from ' + from_to['from_intersection'] + ' to ' + from_to['to_intersection']]
+            if from_to['from_intersection'] == 'summary':
+                return [html.B(DIRECTIONS[orientation][dir_id] + ': '),
+                        'Total Travel Time']
+            else:     
+                return [html.B(DIRECTIONS[orientation][dir_id] + ': '),
+                        'from ' + from_to['from_intersection'] + ' to ' + from_to['to_intersection']]
 
 [create_update_street_name(i) for i in [0,1]]
 
@@ -1176,7 +1183,10 @@ def update_street_name(*args):
         #Use the input for the selected street from the orientation of the current tab
     *selected_streets, orientation, timeperiod, day_type = args
     street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
-    table_street = DATA[DATA['street'] == street]['street1'].iloc[0]
+    if DATA[DATA['street'] == street]['street1'].iloc[0] == 'summary to summary':
+        table_street = 'Total Travel Time'
+    else:
+        table_street = DATA[DATA['street'] == street]['street1'].iloc[0]
     main_street = DATA[DATA['street'] == STREETS[orientation][0]]['street_short'].iloc[0]
     main_name = main_street + ': '+ table_street
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
