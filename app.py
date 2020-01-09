@@ -35,7 +35,26 @@ else:
     con = connect(**dbset)
 
 DATA = pandasql.read_sql('''
-                          SELECT case when d.street in ('Adelaide', 'Richmond', 'Queen', 'Front', 'Wellington') then d.street||' Street' 
+                          with temp as (SELECT street,
+    direction,
+    start_crossstreet,
+    end_crossstreet,
+    dt AS date,
+    day_type,
+    category,
+    period,
+    tt,
+        CASE
+            WHEN gardiner_dash_daily_mat.dt = first_value(gardiner_dash_daily_mat.dt) OVER (PARTITION BY gardiner_dash_daily_mat.direction, gardiner_dash_daily_mat.day_type, gardiner_dash_daily_mat.period ORDER BY gardiner_dash_daily_mat.dt DESC) THEN 1
+            ELSE 0
+        END AS most_recent,
+    weeks.week_number,
+    months.month_number
+   FROM data_analysis.gardiner_dash_daily_mat
+     LEFT JOIN data_analysis.gardiner_weeks weeks ON gardiner_dash_daily_mat.dt >= weeks.week AND gardiner_dash_daily_mat.dt < (weeks.week + '7 days'::interval)
+     LEFT JOIN data_analysis.gardiner_months months ON gardiner_dash_daily_mat.dt >= months.month AND gardiner_dash_daily_mat.dt < (months.month + '1 mon'::interval)
+order by street, direction, date, period)
+SELECT case when d.street in ('Adelaide', 'Richmond', 'Queen', 'Front', 'Wellington') then d.street||' Street' 
                             when d.street in ('Eastern') then d.street||' Avenue'
                             when d.street = 'DVP' then 'Don Valley Parkway'
                             when d.street = 'Gardiner' then 'Gardiner Expressway'
@@ -47,7 +66,7 @@ DATA = pandasql.read_sql('''
                             else direction end as direction,  COALESCE(name2, d.start_crossstreet || ' to ' || d.end_crossstreet) as street1,
 							COALESCE(name1, d.street || ': ' || d.start_crossstreet || ' and ' || d.end_crossstreet) as street, 
                             date, day_type, category, period, round(tt/60,2) as tt, most_recent, week_number, month_number 
-                            FROM data_analysis.gardiner_dash_daily_mat d
+                            FROM temp d
 							join data_analysis.gardiner_periods using (period, day_type)
                             left join (SELECT DISTINCT ON (d1.street, d1.start_cross, d1.end_cross) d1.street, d1.start_cross, d1.end_cross, 
                                         d1.street || ': ' || d1.start_cross || ' and ' || d1.end_cross as name1,
@@ -104,12 +123,14 @@ TITLE = 'Gardiner Expressway Rehabilitation - Travel Time Monitoring'
 STREETS = OrderedDict(dvp=['DVP: Dundas and Bayview Ramp',
                             'DVP: Bayview Ramp and Don Mills',
                             'DVP: Don Mills and Wynford',
-                            'DVP: Wynford and Lawrence',],
+                            'DVP: Wynford and Lawrence',
+                            'DVP: summary and summary'],
                       gardiner=['Gardiner: Wickman and Grand',
                                 'Gardiner: Grand and Roncesvalles',
                                 'Gardiner: Roncesvalles and Dufferin',
                                 'Gardiner: Dufferin and Spadina',
-                                'Gardiner: Spadina and Dundas',],
+                                'Gardiner: Spadina and Dundas',
+                                'Gardiner: summary and summary'],
                       lakeshore=[
                                  'Lakeshore: Ellis and Dufferin',
                                  'Lakeshore: Dufferin and Strachan',
@@ -120,18 +141,22 @@ STREETS = OrderedDict(dvp=['DVP: Dundas and Bayview Ramp',
                                  'Lakeshore: Parliament and Don Roadway',
                                  'Lakeshore: Don Roadway and Leslie',
                                  'Lakeshore: Leslie and Coxwell',
+                                 'Lakeshore: summary and summary'
                                  ],
                       adelaide=['Adelaide: Bathurst and Spadina',
                                 'Adelaide: Spadina and University',
                                 'Adelaide: University and Yonge',
-                                'Adelaide: Yonge and Jarvis',],
+                                'Adelaide: Yonge and Jarvis',
+                                'Adelaide: summary and summary'],
                       richmond=['Richmond: Spadina and Bathurst',
                                 'Richmond: University and Spadina',
                                 'Richmond: Yonge and University',
-                                'Richmond: Jarvis and Yonge',],
+                                'Richmond: Jarvis and Yonge',
+                                'Richmond: summary and summary'],
                       eastern=['Eastern: Broadview and Leslie',
                                 'Eastern: Leslie and Coxwell',
-                                'Eastern: Coxwell and Woodbine',],     
+                                'Eastern: Coxwell and Woodbine',
+                                'Eastern: summary and summary'],     
                       queen=['Queen: Strachan and Bathurst',
                              'Queen: Bathurst and Spadina',
                              'Queen: Spadina and University',
@@ -140,12 +165,14 @@ STREETS = OrderedDict(dvp=['DVP: Dundas and Bayview Ramp',
                              'Queen: Jarvis and Parliament',
                              'Queen: Parliament and Broadview',
                              'Queen: Broadview and Greenwood',
-                             'Queen: Greenwood and Woodbine',],
+                             'Queen: Greenwood and Woodbine',
+                             'Queen: summary and summary'],
                       front=['Front: Bathurst and Spadina',
                              'Front: Spadina and University',
                              'Front: University and Yonge',
-                             'Front: Yonge and Jarvis'],
-                      wellington=['Wellington: Yonge and University','Wellington: University and Blue Jays'])
+                             'Front: Yonge and Jarvis'
+                             'Front: summary and summary'],
+                      wellington=['Wellington: Yonge and University','Wellington: University and Blue Jays','Wellington: summary and summary'])
 # Directions assigned to each tab
 DIRECTIONS = OrderedDict(dvp=['Northbound', 'Southbound'],
                          gardiner=['Eastbound', 'Westbound'],
@@ -745,7 +772,7 @@ STREETS_LAYOUT = html.Div(children=[
                                         style={'display':'none'}),
                                 html.H3('Step 3: Select a time of day period', style={'fontSize':16, 'marginTop': 10} ),         
                                         ], className="hide-on-print"),
-                    html.Div(                                                    
+                    html.Div(id ='radio-style',children=                                                    
                             [dbc.RadioItems(id=CONTROLS['day_types'],
                                                 options=[{'label': day_type,
                                                             'value': day_type}
@@ -774,7 +801,7 @@ STREETS_LAYOUT = html.Div(children=[
                             html.H3('Step 5: Select streets in the table to display trends', style={'fontSize':16}, className="hide-on-print" ),                                                                             
                         ]
                         ),
-                    html.Div([    
+                    html.Div(children=[    
                             html.Div(id=TABLE_TITLE, className="table-title"),
                             html.Div(id=PRINT_TITLE, className="onlyprint-table"),
                             html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['gardiner'], 'Weekday', 'AM Peak'), className="data-table"),
@@ -787,6 +814,10 @@ STREETS_LAYOUT = html.Div(children=[
                     ])
         ])                    
 
+SUMMARY_LAYOUT = html.Div(children=[ html.Button("Print View", id='summary-print-button', className='print-button')]
+                                                , className="hide-on-print", style={'margin-top':'5px'}),
+
+
 app.layout = html.Div([
             dbc.Row(
                 html.Div(
@@ -796,6 +827,7 @@ app.layout = html.Div([
             dbc.Row(
                 dbc.Col([html.Div(
                         dcc.Tabs(children=[
+                                    dcc.Tab(label='Summary', value='summary', children = [SUMMARY_LAYOUT]),
                                     dcc.Tab(label='Gardiner', value='gardiner',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='DVP', value='dvp',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Lakeshore', value='lakeshore',className='custom-tab',selected_className='custom-tab--selected'),
@@ -810,7 +842,7 @@ app.layout = html.Div([
                                     id='tabs',
                                     ),className="hide-on-print")], width=12)
                     ),
-            dbc.Container(
+            dbc.Container(id='container-style', children=
                 [dbc.Row([
                     dbc.Col((                    
                             html.Div(id=MAIN_DIV, children=[STREETS_LAYOUT])), width={"size":4, "order":1}, sm=12, xs=12, md=12, lg=4),
@@ -848,6 +880,20 @@ app.layout = html.Div([
 #                                         Controllers                                             #
 #                                                                                                 #
 ###################################################################################################
+@app.callback([Output('container-style', 'style'),
+               Output('graph-style', 'style'),
+               Output('radio-style', 'style')],
+            [Input('tabs', 'value')])
+def hide_container(value):
+    if value == 'summary':
+        container = {'display':'none'}
+        graph = {'display':'none'}
+        radio = {'display':'none'}
+    else:
+        container = {'display':'block'}
+        graph = {'display':'block'}  
+        radio = {'display':'block'}  
+    return container, graph, radio
 
 @app.callback(Output(LAYOUTS['streets'], 'style'),
               [Input('tabs', 'value')])
