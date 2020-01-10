@@ -29,7 +29,7 @@ UNION ALL
 WITH DATA;
 
 ALTER TABLE data_analysis.gardiner_dash_daily_mat
-    OWNER TO natalie;
+    OWNER TO heroku_bot;
 
 GRANT SELECT ON TABLE data_analysis.gardiner_dash_daily_mat TO bdit_humans;
-GRANT ALL ON TABLE data_analysis.gardiner_dash_daily_mat TO natalie;
+GRANT ALL ON TABLE data_analysis.gardiner_dash_daily_mat TO heroku_bot;
