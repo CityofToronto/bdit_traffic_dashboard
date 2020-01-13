@@ -43,8 +43,7 @@ DATA = pandasql.read_sql('''
     day_type,
     category,
     period,
-    tt,
-        CASE
+    tt,CASE
             WHEN gardiner_dash_daily_mat.dt = first_value(gardiner_dash_daily_mat.dt) OVER (PARTITION BY gardiner_dash_daily_mat.direction, gardiner_dash_daily_mat.day_type, gardiner_dash_daily_mat.period ORDER BY gardiner_dash_daily_mat.dt DESC) THEN 1
             ELSE 0
         END AS most_recent,
@@ -93,6 +92,28 @@ BASELINE = pandasql.read_sql('''SELECT COALESCE(name1, d.street || ': ' || d.fro
                                 OR (n.start_cross = d.to_intersection AND n.end_cross = d.from_intersection))
 								order by time_range									
                             ''',con)
+
+SUMMARY = pandasql.read_sql('''with temp as (
+select a.street, b.direction, dt, a.day_type, a.period, round(a.tt/60, 1) as tt, b.tt as baseline_tt
+from data_analysis.gardiner_dash_daily_mat a
+join (select * from data_analysis.gardiner_dash_baseline_mat where from_intersection = 'summary')b 
+on a.street=b.street and a.direction = gis.twochar_direction(b.direction) and a.day_type = b.day_type and a.period = b.period
+where start_crossstreet = 'summary' and b.day_type != 'Excluded')
+
+select case when street in ('Adelaide', 'Richmond', 'Queen', 'Front', 'Wellington') then street||' Street' 
+                            when street in ('Eastern') then street||' Avenue'
+                            when street = 'DVP' then 'Don Valley Parkway'
+                            when street = 'Gardiner' then 'Gardiner Expressway'
+                            when street = 'Lakeshore' then 'Lake Shore Boulevard' end
+                            as street_short, direction,dt as date, day_type, period, tt, baseline_tt, CASE
+            WHEN temp.dt = first_value(temp.dt) OVER (PARTITION BY temp.direction, temp.day_type, temp.period ORDER BY temp.dt DESC) THEN 1
+            ELSE 0
+        END AS most_recent,
+    weeks.week_number,
+    months.month_number
+from temp 
+LEFT JOIN data_analysis.gardiner_weeks weeks ON temp.dt >= weeks.week AND temp.dt < (weeks.week + '7 days'::interval)
+     LEFT JOIN data_analysis.gardiner_months months ON temp.dt >= months.month AND temp.dt < (months.month + '1 mon'::interval)''',con)
 
 HOLIDAY = pandasql.read_sql(''' SELECT dt FROM ref.holiday WHERE dt >= '2019-08-01' ''', con, parse_dates=['dt',])
 
@@ -220,27 +241,38 @@ FONT_FAMILY = '"Libre Franklin", sans-serif'
 # These are defined as variables to make it easier to debug since a static 
 # linter will scream if a variable isn't defined
 MAIN_DIV = 'main-page'
+SUMMARY_LAYOUT = 'summary-layout'
 STREETNAME_DIV = ['street-name-'+str(i) for i in [0, 1]]
 SELECTED_STREET_DIVS = OrderedDict([(orientation, 'selected-street' + orientation) for orientation in STREETS])
 TABLE_DIV_ID = 'div-table'
 TIMEPERIOD_DIV = 'timeperiod'
 STEP2 = 'step2'
+SUMMARY_STEP2 = 'summary-step2'
 BASELINE_DESC = 'baseline_desc'
 STREET_TITLE = 'street-title'
 TABLE_TITLE = 'table-title'
+SUMMARY_TABLE_TITLE = 'summary-table-title'
 TIME_TITLE = 'time-title'
 PRINT_TITLE = 'print-title'
+SUMMARY_PRINT_TITLE = 'summary-print-title'
 DATE_GENERATED = 'date-generated'
+SUMMARY_DATE_GENERATED = 'summary-date-generated'
 CONTROLS = dict(div_id='controls-div',
                 toggle='toggle-controls-button',
                 baseline_toggle='baseline-toggle',
+                summary_baseline_toggle='summary-baseline-toggle',
                 timeperiods='timeperiod-radio',
                 day_types='day-type-radio',
                 date_range_type='date-range-types',
+                summary_date_range_type='summary-date-range-type',
                 date_range='date-range-dropbown',
+                summary_date_range='summary-date-range',
                 date_range_span='date-range-span',
+                summary_date_range_span='summary-date-range-span',
                 date_picker='date-picker-div',
-                date_picker_span='date-picker-span')
+                date_picker_span='date-picker-span',
+                summary_date_picker='summary-date-picker-div',
+                summary_date_picker_span='summary-date-picker-span')
 DATERANGE_TYPES = ['Select Date', 'Select Week', 'Select Month']
 GRAPHS = ['eb_graph', 'wb_graph']
 GRAPHDIVS = ['eb_graph_div', 'wb_graph_div']
@@ -303,6 +335,19 @@ def pivot_order(df, orientation = 'gardiner', date_range_type=1):
     pivoted.street.cat.set_categories(STREETS[orientation], inplace=True)
     return pivoted.sort_values(['street']).round(1)
 
+
+def summary_pivot_order(df, date_range_type=1):
+    if DATERANGE_TYPES[date_range_type] == 'Select Date' and  'dt' in df.columns:
+        # Don't aggregate by date
+        pivoted = df.pivot_table(index=['street', 'dt'],
+                                 columns='direction',
+                                 values='tt').reset_index()
+    else:
+        # Do aggregate by date
+        pivoted = df.pivot_table(index='street', columns='direction', values='tt').reset_index()
+    pivoted.street = pivoted.street.astype("category")
+    return pivoted.sort_values(['street']).round(1)    
+
 def selected_data(data, daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     '''Returns a boolean column indicating whether the provided data was selected or not
     '''
@@ -335,6 +380,31 @@ def filter_table_data(period, day_type, orientation='gardiner', daterange_type=0
     pivoted_baseline = pivot_order(filtered_base, orientation)
 
     return (pivoted, pivoted_baseline)
+
+def filter_summary_table_data(daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
+
+    date_filter = selected_data(DATA, daterange_type, date_range_id)
+
+    #current data
+    filtered = DATA[
+                    (DATA['day_type'] == day_type) &
+                    (DATA['category'] != 'Excluded') &
+                    (date_filter)]              
+    pivoted = pivot_order(filtered, daterange_type)
+        
+    #baseline data
+    filtered_base = BASELINE[(BASELINE['day_type'] == day_type)]
+    pivoted_baseline = pivot_order(filtered_base)
+    
+    return (pivoted, pivoted_baseline)
+
+def generate_summary_df(daterange_type, date_range_id, baseline_state):
+    if daterange_type == 'Select Date':
+        df = SUMMARY[(SUMMARY['dt'] == date_range_id)]
+        table =  dbc.Table.from_dataframe(df, striped=True, bordered=True, hover=True)
+    else:
+        table = dbc.Table.from_dataframe(df, striped=True, bordered=True, hover=True)
+    return table     
     
 def graph_bounds_for_date_range(daterange_type, date_range_id):
     '''Determine bounds for the x-axis of the graphs based on the type of 
@@ -517,7 +587,7 @@ def generate_row(df_row, baseline_row, selected, orientation='gardiner', baselin
         return html.Tr([html.Td(table_street, className='segname'), 
                     *data_cells],
                     id=df_row['street'],
-                    className=generate_row_class(selected))                
+                    className=generate_row_class(selected))     
 
 def generate_table(selected_street, day_type, period, orientation='gardiner', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY, baseline_state=1):
     """Generate HTML table of streets and before-after values
@@ -555,9 +625,7 @@ def generate_table(selected_street, day_type, period, orientation='gardiner', da
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
-        LOGGER.debug(date_range_id)
         date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0]
-
         day = date_picked.strftime("%b '%y")
 
     rows = []
@@ -817,8 +885,56 @@ STREETS_LAYOUT = html.Div(children=[
                     ])
         ])                    
 
-SUMMARY_LAYOUT = html.Div(children=[ html.Button("Print View", id='summary-print-button', className='print-button')]
-                                                , className="hide-on-print", style={'margin-top':'5px'}),
+SUMMARY_LAYOUT = html.Div(children=[
+                    html.Div(children=[html.Button("Print View", id='summary-print-button', className='print-button')],className="hide-on-print", style={'margin-top':'5px'}),
+                    html.Div(children=[
+                            html.H3('Follow these steps to visualize and compare travel time:',style={'fontSize':18, 'fontWeight':'bold'}, className="hide-on-print"),
+                            html.Div(
+                                children=[
+                                        html.H3('Step 1: Select the type of time period', style={'fontSize':16, 'marginTop': 10} ),
+                                        html.Div(dcc.Dropdown(
+                                                    id=CONTROLS['summary_date_range_type'],
+                                                    options=[{'label': label,
+                                                            'value': value}
+                                                            for value, label in enumerate(DATERANGE_TYPES)],
+                                                    value=0,
+                                                    clearable=False, 
+                                                    style={'width': '200px'}),
+                                                    title='Select a date range type to filter table data')], className="hide-on-print"),
+                                        html.H3(id=SUMMARY_STEP2, style={'fontSize':16, 'marginTop': 10}),             
+                                        html.Div(dcc.Dropdown(id=CONTROLS['summary_date_range'],
+                                                            options= generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
+                                                            value = 1,
+                                                            clearable=False),
+                                                id=CONTROLS['summary_date_range_span'],
+                                                style={'display':'none'}
+                                                ),
+                                        html.Span(dcc.DatePickerSingle(id=CONTROLS['summary_date_picker'],
+                                                                    clearable=False,
+                                                                    min_date_allowed=DATERANGE[0],
+                                                                    max_date_allowed=DATERANGE[1],
+                                                                    date=MOST_RECENT_WEEKDAY,
+                                                                    display_format='MMM DD',
+                                                                    month_format='MMM',
+                                                                    show_outside_days=True),
+                                                id=CONTROLS['summary_date_picker_span'],
+                                                style={'display':'none'}
+                                                )], className="hide-on-print"),
+                            html.Div(
+                                children=[
+                                        html.H3('Step 3: Select to display the Baseline', style={'fontSize':16}),
+                                        dbc.RadioItems(id="summary-baseline-toggle",
+                                                        value=1,
+                                                        labelClassName="date-group-labels",
+                                                        labelCheckedClassName="date-group-labels-checked",
+                                                        className="date-group-items", inline=True, 
+                                                        options=[
+                                                                {"label": "Baseline", "value": 1},
+                                                                {"label": "No Baseline", "value": 2}])], className="hide-on-print"
+                                                                ),
+                         #html.Div(id=TABLE_DIV_ID, children=generate_summary_table(INITIAL_STATE['gardiner'], 'Weekday', 'AM Peak'), className="data-table"),                                                              
+                            ])
+                                                                                                                                                       
 
 
 app.layout = html.Div([
@@ -830,7 +946,7 @@ app.layout = html.Div([
             dbc.Row(
                 dbc.Col([html.Div(
                         dcc.Tabs(children=[
-                                    dcc.Tab(label='Summary', value='summary', children = [SUMMARY_LAYOUT]),
+                                    #dcc.Tab(label='Summary', value='summary', children = [SUMMARY_LAYOUT]),
                                     dcc.Tab(label='Gardiner', value='gardiner',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='DVP', value='dvp',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Lakeshore', value='lakeshore',className='custom-tab',selected_className='custom-tab--selected'),
@@ -956,6 +1072,35 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
                 for period
                 in TIMEPERIODS[TIMEPERIODS['day_type'] == day_type]['period']]
 
+#callback function for summary tab
+
+@app.callback([Output(SUMMARY_STEP2, 'children'),
+              Output(SUMMARY_TABLE_TITLE, 'children'),
+              Output(SUMMARY_PRINT_TITLE, 'children'),
+              Output(SUMMARY_DATE_GENERATED, 'children')],
+             [Input(CONTROLS['summary_date_picker'], 'date'),
+              Input(CONTROLS['summary_date_range_type'], 'value'),
+              Input(CONTROLS['summary_date_range'], 'value'),
+             ])
+def summary_generate_step2(selected_date, daterange_type, date_range):
+    date_generated = 'Date generated: '+ str(pd.Timestamp.today().date())
+    time_range_title = ' things to fix'
+    if DATERANGE_TYPES[daterange_type] == 'Select Date': 
+        step2 =  'Step 2: Select the date'
+        table_title = 'Total Daily Travel Time (min)'
+        print_title = str(pd.to_datetime(selected_date).date()) + ', '+ str(time_range_title)
+    elif DATERANGE_TYPES[daterange_type] == 'Select Week':
+        week_start = WEEKS[(WEEKS['week_number'] == date_range)].iloc[0]['week']
+        week_end = week_start + pd.Timedelta('6 days')
+        step2 = 'Step 2: Select the week'
+        table_title = 'Total Weekly Travel Time (min)' 
+        print_title = str(week_start) + ' to ' + str(week_end) + ', '+ str(time_range_title)
+    elif DATERANGE_TYPES[daterange_type] == 'Select Month':
+        step2 = 'Step 2: Select the month'
+        table_title = 'Total Monthly Travel Time (min)'
+        print_title = str(MONTHS[(MONTHS['month_number'] == date_range)].iloc[0]['month'].strftime("%B %Y")) + ', '+ str(time_range_title)
+    return step2, table_title, print_title, date_generated
+
 
 @app.callback([Output(STEP2, 'children'),
                Output(TABLE_TITLE, 'children'),
@@ -968,25 +1113,26 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
                Input(CONTROLS['date_range'], 'value'),
                Input('tabs', 'value')]) 
 def generate_step_two(selected_date, day_type, daterange_type, timeperiod, date_range, tabs):
-    tabs_name = DATA[DATA['street'] == STREETS[tabs][0]]['street_short'].iloc[0]
-    time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
-    time_range_title = day_type + ' ' + timeperiod + ' (' + time_range + ')'
-    date_generated = 'Date generated: '+ str(pd.Timestamp.today().date())
-    if DATERANGE_TYPES[daterange_type] == 'Select Date': 
-        step2 =  'Step 2: Select the date'
-        table_title = str(tabs_name) + ' - Average Daily Travel Time (min)'
-        print_title = str(pd.to_datetime(selected_date).date()) + ', '+ str(time_range_title)
-    elif DATERANGE_TYPES[daterange_type] == 'Select Week':
-        week_start = WEEKS[(WEEKS['week_number'] == date_range)].iloc[0]['week']
-        week_end = week_start + pd.Timedelta('6 days')
-        step2 = 'Step 2: Select the week'
-        table_title = str(tabs_name) + ' - Average Weekly Travel Time (min)' 
-        print_title = str(week_start) + ' to ' + str(week_end) + ', '+ str(time_range_title)
-    elif DATERANGE_TYPES[daterange_type] == 'Select Month':
-        step2 = 'Step 2: Select the month'
-        table_title = str(tabs_name) + ' - Average Monthly Travel Time (min)'
-        print_title = str(MONTHS[(MONTHS['month_number'] == date_range)].iloc[0]['month'].strftime("%B %Y")) + ', '+ str(time_range_title)
-    return step2, table_title, print_title, date_generated
+    if tabs != 'summary':
+        tabs_name = DATA[DATA['street'] == STREETS[tabs][0]]['street_short'].iloc[0]
+        time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
+        time_range_title = day_type + ' ' + timeperiod + ' (' + time_range + ')'
+        date_generated = 'Date generated: '+ str(pd.Timestamp.today().date())
+        if DATERANGE_TYPES[daterange_type] == 'Select Date': 
+            step2 =  'Step 2: Select the date'
+            table_title = str(tabs_name) + ' - Average Daily Travel Time (min)'
+            print_title = str(pd.to_datetime(selected_date).date()) + ', '+ str(time_range_title)
+        elif DATERANGE_TYPES[daterange_type] == 'Select Week':
+            week_start = WEEKS[(WEEKS['week_number'] == date_range)].iloc[0]['week']
+            week_end = week_start + pd.Timedelta('6 days')
+            step2 = 'Step 2: Select the week'
+            table_title = str(tabs_name) + ' - Average Weekly Travel Time (min)' 
+            print_title = str(week_start) + ' to ' + str(week_end) + ', '+ str(time_range_title)
+        elif DATERANGE_TYPES[daterange_type] == 'Select Month':
+            step2 = 'Step 2: Select the month'
+            table_title = str(tabs_name) + ' - Average Monthly Travel Time (min)'
+            print_title = str(MONTHS[(MONTHS['month_number'] == date_range)].iloc[0]['month'].strftime("%B %Y")) + ', '+ str(time_range_title)
+        return step2, table_title, print_title, date_generated
 
 
 
@@ -1060,36 +1206,42 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=MO
 
     return table
 
-@app.callback(Output(CONTROLS['date_range_span'], 'style'),
+@app.callback([Output(CONTROLS['date_range_span'], 'style'),
+               Output(CONTROLS['day_types'], 'style'),
+               Output(CONTROLS['date_picker_span'], 'style')],
               [Input(CONTROLS['date_range_type'], 'value')])
 def hide_reveal_date_range(daterange_type):
     if DATERANGE_TYPES[daterange_type] != 'Select Date':
-        return {'display':'inline'}
+        daterange = {'display':'inline'}
+        daterangetype = {'display':'inline'}
+        datepicker = {'display':'none'}
     else:
-        return {'display':'none'}
+        daterange = {'display':'none'}
+        daterangetype = {'display':'none'}
+        datepicker = {'display':'inline'}
+    return daterange, daterangetype, datepicker
 
-@app.callback(Output(CONTROLS['day_types'], 'style'),
-              [Input(CONTROLS['date_range_type'], 'value')])
-def hide_reveal_day_types(daterange_type):
+@app.callback([Output(CONTROLS['summary_date_range_span'], 'style'),
+               Output(CONTROLS['summary_date_picker_span'], 'style')],
+              [Input(CONTROLS['summary_date_range_type'], 'value')])
+def hide_summary_reveal_date_range(daterange_type):
     if DATERANGE_TYPES[daterange_type] != 'Select Date':
-        return {'display':'inline'}
+        daterange = {'display':'inline'}
+        datepicker = {'display':'none'}
     else:
-        return {'display':'none'}
-
-@app.callback(Output(CONTROLS['date_picker_span'], 'style'),
-              [Input(CONTROLS['date_range_type'], 'value')])
-def hide_reveal_date_picker(daterange_type):
-    LOGGER.debug('Hide reveal date picker, daterange_type: ' + str(daterange_type))
-    if DATERANGE_TYPES[daterange_type] == 'Select Date':
-        LOGGER.debug('Reveal date picker')
-        return {'display':'inline'}
-    else:
-        return {'display':'none'}
+        daterange = {'display':'none'}
+        datepicker = {'display':'inline'}
+    return daterange, datepicker
 
 @app.callback(Output(CONTROLS['date_range'], 'options'),
               [Input(CONTROLS['date_range_type'], 'value')])
 def generate_date_range_for_type(daterange_type):
     return generate_date_ranges(daterange_type=daterange_type)
+
+@app.callback(Output(CONTROLS['summary_date_range'], 'options'),
+              [Input(CONTROLS['summary_date_range_type'], 'value')])
+def generate_date_range_for_type(daterange_type):
+    return generate_date_ranges(daterange_type=daterange_type)    
 
 @app.callback(Output(CONTROLS['date_range'], 'value'),
               [Input(CONTROLS['date_range_type'], 'value')],
@@ -1103,6 +1255,19 @@ def update_date_range_value(daterange_type, date_range_id):
         return WEEKS['week_number'].iloc[0]    
     elif  DATERANGE_TYPES[daterange_type] == 'Select Month':
         return MONTHS['month_number'].iloc[0] 
+
+@app.callback(Output(CONTROLS['summary_date_range'], 'value'),
+              [Input(CONTROLS['summary_date_range_type'], 'value')],
+              [State(CONTROLS['summary_date_range'], 'value')])
+def update_date_range_value(daterange_type, date_range_id):
+    if DATERANGE_TYPES[daterange_type] == 'Select Date':
+        date_range_id        
+    #if not RANGES[daterange_type].empty and date_range_id <= len(RANGES[daterange_type]):
+    #    return date_range_id
+    elif  DATERANGE_TYPES[daterange_type] == 'Select Week':
+        return WEEKS['week_number'].iloc[0]    
+    elif  DATERANGE_TYPES[daterange_type] == 'Select Month':
+        return MONTHS['month_number'].iloc[0]         
 
 
 def create_row_update_function(streetname, orientation):
