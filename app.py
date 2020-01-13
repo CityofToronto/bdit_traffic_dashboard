@@ -843,7 +843,7 @@ STREETS_LAYOUT = html.Div(children=[
                                         style={'display':'none'}),
                                 html.H3('Step 3: Select a time of day period', style={'fontSize':16, 'marginTop': 10} ),         
                                         ], className="hide-on-print"),
-                    html.Div(id ='radio-style',children=                                                    
+                    html.Div(                                                 
                             [dbc.RadioItems(id=CONTROLS['day_types'],
                                                 options=[{'label': day_type,
                                                             'value': day_type}
@@ -851,14 +851,13 @@ STREETS_LAYOUT = html.Div(children=[
                                                 value=TIMEPERIODS.iloc[0]['day_type'],
                                                 labelClassName="date-group-labels",
                                                 labelCheckedClassName="date-group-labels-checked",
-                                                className="date-group-items", inline=True),   
+                                                className="date-group-items hide-on-print", inline=True),   
                             dbc.RadioItems(id=CONTROLS['timeperiods'],
                                                 value=TIMEPERIODS.iloc[0]['period'],
                                                 labelClassName="date-group-labels",
                                             labelCheckedClassName="date-group-labels-checked",
                                             className="date-group-items hide-on-print", inline=True),   
-                                        ] , className="hide-on-print",
-                            ),
+                                        ] , className="hide-on-print"),
                     html.Div([html.H3('Step 4: Select to display the Baseline', style={'fontSize':16}),
                             dbc.RadioItems(id="baseline-toggle",
                                             value=1,
@@ -999,20 +998,6 @@ app.layout = html.Div([
 #                                         Controllers                                             #
 #                                                                                                 #
 ###################################################################################################
-@app.callback([Output('container-style', 'style'),
-               Output('graph-style', 'style'),
-               Output('radio-style', 'style')],
-            [Input('tabs', 'value')])
-def hide_container(value):
-    if value == 'summary':
-        container = {'display':'none'}
-        graph = {'display':'none'}
-        radio = {'display':'none'}
-    else:
-        container = {'display':'block'}
-        graph = {'display':'block'}  
-        radio = {'display':'block'}  
-    return container, graph, radio
 
 @app.callback(Output(LAYOUTS['streets'], 'style'),
               [Input('tabs', 'value')])
