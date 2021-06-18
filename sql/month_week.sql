@@ -4,7 +4,7 @@
 CREATE OR REPLACE VIEW data_analysis.gardiner_weeks AS
  SELECT a.week,
     row_number() OVER () AS week_number
-   FROM ( SELECT DISTINCT ON ((date_trunc('week'::text, gardiner_dash_daily_mat.date::timestamp with time zone)::date)) date_trunc('week'::text, gardiner_dash_daily_mat.date::timestamp with time zone)::date AS week
+   FROM ( SELECT DISTINCT ON ((date_trunc('week'::text, gardiner_dash_daily_mat.dt::timestamp with time zone)::date)) date_trunc('week'::text, gardiner_dash_daily_mat.dt::timestamp with time zone)::date AS week
            FROM data_analysis.gardiner_dash_daily_mat) a
   ORDER BY (row_number() OVER ()) DESC;
 
@@ -21,7 +21,7 @@ GRANT SELECT ON TABLE data_analysis.gardiner_weeks TO heroku_bot;
 CREATE OR REPLACE VIEW data_analysis.gardiner_months AS
  SELECT a.month,
     row_number() OVER () AS month_number
-   FROM ( SELECT DISTINCT ON ((date_trunc('month'::text, gardiner_dash_daily_mat.date::timestamp with time zone)::date)) date_trunc('month'::text, gardiner_dash_daily_mat.date::timestamp with time zone)::date AS month
+   FROM ( SELECT DISTINCT ON ((date_trunc('month'::text, gardiner_dash_daily_mat.dt::timestamp with time zone)::date)) date_trunc('month'::text, gardiner_dash_daily_mat.dt::timestamp with time zone)::date AS month
            FROM data_analysis.gardiner_dash_daily_mat) a
   ORDER BY (row_number() OVER ()) DESC;
 

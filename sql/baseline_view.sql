@@ -1,6 +1,7 @@
 -- a view in our database that aggregates our baseline data
-CREATE OR REPLACE VIEW data_analysis.gardiner_dash_baseline AS
- SELECT gardiner_blip_daily.street,
+
+CREATE MATERIALIZED VIEW data_analysis.gardiner_dash_baseline_mat as 
+with temp as (SELECT gardiner_blip_daily.street,
         CASE
             WHEN gardiner_blip_daily.direction::text = 'NB'::text THEN 'Northbound'::text
             WHEN gardiner_blip_daily.direction::text = 'EB'::text THEN 'Eastbound'::text
@@ -13,15 +14,20 @@ CREATE OR REPLACE VIEW data_analysis.gardiner_dash_baseline AS
     gardiner_blip_daily.day_type,
     gardiner_blip_daily.period,
     gardiner_periods.time_range AS period_range,
-    round(avg(gardiner_blip_daily.tt) / 60::numeric, 1) AS tt
+    round(avg(gardiner_blip_daily.tt) / 60::numeric, 1) AS tt,
+	sum(round(avg(gardiner_blip_daily.tt) / 60::numeric, 1)) over (partition by street, direction, day_type, period, time_range) as sum_tt 
    FROM data_analysis.gardiner_blip_daily
      JOIN data_analysis.gardiner_periods USING (period, day_type)
   WHERE gardiner_blip_daily.study_period = 'Baseline'::text
-  GROUP BY gardiner_blip_daily.street, gardiner_blip_daily.direction, gardiner_blip_daily.start_crossstreet, gardiner_blip_daily.end_crossstreet, gardiner_blip_daily.day_type, gardiner_blip_daily.period, gardiner_periods.time_range;
+  GROUP BY gardiner_blip_daily.street, gardiner_blip_daily.direction, gardiner_blip_daily.start_crossstreet, gardiner_blip_daily.end_crossstreet, gardiner_blip_daily.day_type, gardiner_blip_daily.period, gardiner_periods.time_range
+)
+select street, direction, from_intersection, to_intersection, day_type, period, period_range, tt from temp
+union all
+select street, direction, 'summary' as from_intersection, 'summary' as to_intersection, day_type, period, period_range, sum_tt from (
+	select distinct street, direction, day_type, period, period_range, sum_tt from temp) a
+order by street, direction
+ALTER TABLE data_analysis.gardiner_dash_baseline_mat
+    OWNER TO heroku_bot;
 
-ALTER TABLE data_analysis.gardiner_dash_baseline
-    OWNER TO natalie;
-
-GRANT SELECT ON TABLE data_analysis.gardiner_dash_baseline TO bdit_humans;
-GRANT ALL ON TABLE data_analysis.gardiner_dash_baseline TO natalie;
-GRANT SELECT ON TABLE data_analysis.gardiner_dash_baseline TO heroku_bot;
+GRANT SELECT ON TABLE data_analysis.gardiner_dash_baseline_mat TO bdit_humans;
+GRANT ALL ON TABLE data_analysis.gardiner_dash_baseline_mat TO heroku_bot;		

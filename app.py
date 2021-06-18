@@ -35,7 +35,25 @@ else:
     con = connect(**dbset)
 
 DATA = pandasql.read_sql('''
-                          SELECT case when d.street in ('Adelaide', 'Richmond', 'Queen', 'Front', 'Wellington') then d.street||' Street' 
+                          with temp as (SELECT street,
+    direction,
+    start_crossstreet,
+    end_crossstreet,
+    dt AS date,
+    day_type,
+    category,
+    period,
+    tt,CASE
+            WHEN gardiner_dash_daily_mat.dt = first_value(gardiner_dash_daily_mat.dt) OVER (PARTITION BY gardiner_dash_daily_mat.direction, gardiner_dash_daily_mat.day_type, gardiner_dash_daily_mat.period ORDER BY gardiner_dash_daily_mat.dt DESC) THEN 1
+            ELSE 0
+        END AS most_recent,
+    weeks.week_number,
+    months.month_number
+   FROM data_analysis.gardiner_dash_daily_mat
+     LEFT JOIN data_analysis.gardiner_weeks weeks ON gardiner_dash_daily_mat.dt >= weeks.week AND gardiner_dash_daily_mat.dt < (weeks.week + '7 days'::interval)
+     LEFT JOIN data_analysis.gardiner_months months ON gardiner_dash_daily_mat.dt >= months.month AND gardiner_dash_daily_mat.dt < (months.month + '1 mon'::interval)
+order by street, direction, date, period)
+SELECT case when d.street in ('Adelaide', 'Richmond', 'Queen', 'Front', 'Wellington') then d.street||' Street' 
                             when d.street in ('Eastern') then d.street||' Avenue'
                             when d.street = 'DVP' then 'Don Valley Parkway'
                             when d.street = 'Gardiner' then 'Gardiner Expressway'
@@ -47,7 +65,7 @@ DATA = pandasql.read_sql('''
                             else direction end as direction,  COALESCE(name2, d.start_crossstreet || ' to ' || d.end_crossstreet) as street1,
 							COALESCE(name1, d.street || ': ' || d.start_crossstreet || ' and ' || d.end_crossstreet) as street, 
                             date, day_type, category, period, round(tt/60,2) as tt, most_recent, week_number, month_number 
-                            FROM data_analysis.gardiner_dash_daily_mat d
+                            FROM temp d
 							join data_analysis.gardiner_periods using (period, day_type)
                             left join (SELECT DISTINCT ON (d1.street, d1.start_cross, d1.end_cross) d1.street, d1.start_cross, d1.end_cross, 
                                         d1.street || ': ' || d1.start_cross || ' and ' || d1.end_cross as name1,
@@ -75,6 +93,28 @@ BASELINE = pandasql.read_sql('''SELECT COALESCE(name1, d.street || ': ' || d.fro
 								order by time_range									
                             ''',con)
 
+SUMMARY = pandasql.read_sql('''with temp as (
+select a.street, b.direction, dt, a.day_type, a.period, round(a.tt/60, 1) as tt, b.tt as baseline_tt
+from data_analysis.gardiner_dash_daily_mat a
+join (select * from data_analysis.gardiner_dash_baseline_mat where from_intersection = 'summary')b 
+on a.street=b.street and a.direction = gis.twochar_direction(b.direction) and a.day_type = b.day_type and a.period = b.period
+where start_crossstreet = 'summary' and b.day_type != 'Excluded')
+
+select case when street in ('Adelaide', 'Richmond', 'Queen', 'Front', 'Wellington') then street||' Street' 
+                            when street in ('Eastern') then street||' Avenue'
+                            when street = 'DVP' then 'Don Valley Parkway'
+                            when street = 'Gardiner' then 'Gardiner Expressway'
+                            when street = 'Lakeshore' then 'Lake Shore Boulevard' end
+                            as street_short, direction,dt as date, day_type, period, tt, baseline_tt, CASE
+            WHEN temp.dt = first_value(temp.dt) OVER (PARTITION BY temp.direction, temp.day_type, temp.period ORDER BY temp.dt DESC) THEN 1
+            ELSE 0
+        END AS most_recent,
+    weeks.week_number,
+    months.month_number
+from temp 
+LEFT JOIN data_analysis.gardiner_weeks weeks ON temp.dt >= weeks.week AND temp.dt < (weeks.week + '7 days'::interval)
+     LEFT JOIN data_analysis.gardiner_months months ON temp.dt >= months.month AND temp.dt < (months.month + '1 mon'::interval)''',con)
+
 HOLIDAY = pandasql.read_sql(''' SELECT dt FROM ref.holiday WHERE dt >= '2019-08-01' ''', con, parse_dates=['dt',])
 
 # Numbering Weeks and Months for Dropdown Selectors
@@ -95,7 +135,7 @@ con.close()
 #                                                                                                 #
 ###################################################################################################
 
-TITLE = 'Gardiner Expressway Rehabilitation - Travel Time Impact'
+TITLE = 'Gardiner Expressway Rehabilitation - Travel Time Monitoring'
 
 # Data management constants
 
@@ -104,32 +144,40 @@ TITLE = 'Gardiner Expressway Rehabilitation - Travel Time Impact'
 STREETS = OrderedDict(dvp=['DVP: Dundas and Bayview Ramp',
                             'DVP: Bayview Ramp and Don Mills',
                             'DVP: Don Mills and Wynford',
-                            'DVP: Wynford and Lawrence',],
-                      gardiner=['Gardiner: Roncesvalles and Dufferin',
+                            'DVP: Wynford and Lawrence',
+                            'DVP: summary and summary'],
+                      gardiner=['Gardiner: Wickman and Grand',
+                                'Gardiner: Grand and Roncesvalles',
+                                'Gardiner: Roncesvalles and Dufferin',
                                 'Gardiner: Dufferin and Spadina',
                                 'Gardiner: Spadina and Dundas',
-                                'Gardiner: Grand and Dufferin',
-                                'Gardiner: Grand and Ellis',],
-                      lakeshore=['Lakeshore: Don Roadway and Leslie',
-                                 'Lakeshore: Dufferin and Strachan',
+                                'Gardiner: summary and summary'],
+                      lakeshore=[
                                  'Lakeshore: Ellis and Dufferin',
-                                 'Lakeshore: Leslie and Coxwell',
-                                 'Lakeshore: Parliament and Don Roadway',
-                                 'Lakeshore: Parliament and Yonge',
-                                 'Lakeshore: Strachan and Bay',
+                                 'Lakeshore: Dufferin and Strachan',
+                                 'Lakeshore: Yonge and Strachan',
                                  'Lakeshore: Yonge and Spadina',
-                                 'Lakeshore: Yonge and Strachan',],
+                                 'Lakeshore: Strachan and Bay',
+                                 'Lakeshore: Parliament and Yonge',
+                                 'Lakeshore: Parliament and Don Roadway',
+                                 'Lakeshore: Don Roadway and Leslie',
+                                 'Lakeshore: Leslie and Coxwell',
+                                 'Lakeshore: summary and summary'
+                                 ],
                       adelaide=['Adelaide: Bathurst and Spadina',
                                 'Adelaide: Spadina and University',
                                 'Adelaide: University and Yonge',
-                                'Adelaide: Yonge and Jarvis',],
+                                'Adelaide: Yonge and Jarvis',
+                                'Adelaide: summary and summary'],
                       richmond=['Richmond: Spadina and Bathurst',
                                 'Richmond: University and Spadina',
                                 'Richmond: Yonge and University',
-                                'Richmond: Jarvis and Yonge',],
+                                'Richmond: Jarvis and Yonge',
+                                'Richmond: summary and summary'],
                       eastern=['Eastern: Broadview and Leslie',
                                 'Eastern: Leslie and Coxwell',
-                                'Eastern: Coxwell and Woodbine',],     
+                                'Eastern: Coxwell and Woodbine',
+                                'Eastern: summary and summary'],     
                       queen=['Queen: Strachan and Bathurst',
                              'Queen: Bathurst and Spadina',
                              'Queen: Spadina and University',
@@ -138,22 +186,24 @@ STREETS = OrderedDict(dvp=['DVP: Dundas and Bayview Ramp',
                              'Queen: Jarvis and Parliament',
                              'Queen: Parliament and Broadview',
                              'Queen: Broadview and Greenwood',
-                             'Queen: Greenwood and Woodbine',],
+                             'Queen: Greenwood and Woodbine',
+                             'Queen: summary and summary'],
                       front=['Front: Bathurst and Spadina',
                              'Front: Spadina and University',
                              'Front: University and Yonge',
-                             'Front: Yonge and Jarvis'],
-                      wellington=['Wellington: Yonge and University','Wellington: University and Blue Jays'])
+                             'Front: Yonge and Jarvis'
+                             'Front: summary and summary'],
+                      wellington=['Wellington: Yonge and University','Wellington: University and Blue Jays','Wellington: summary and summary'])
 # Directions assigned to each tab
 DIRECTIONS = OrderedDict(dvp=['Northbound', 'Southbound'],
                          gardiner=['Eastbound', 'Westbound'],
                          queen=['Eastbound', 'Westbound'],
-                         adelaide=['Eastbound', 'Westbound'],
-                         richmond=['Eastbound', 'Westbound'],
+                         adelaide=['Eastbound',],
+                         richmond=['Westbound'],
                          eastern=['Eastbound', 'Westbound'],
                          lakeshore=['Eastbound', 'Westbound'],
                          front=['Eastbound', 'Westbound'],
-                         wellington=['Eastbound', 'Westbound'],)
+                         wellington=['Westbound'],)
 
 #Time periods for each day type, derived from the baseline dataframe
 TIMEPERIODS = BASELINE[['day_type','period','period_range']].drop_duplicates()
@@ -191,24 +241,38 @@ FONT_FAMILY = '"Libre Franklin", sans-serif'
 # These are defined as variables to make it easier to debug since a static 
 # linter will scream if a variable isn't defined
 MAIN_DIV = 'main-page'
+SUMMARY_LAYOUT = 'summary-layout'
 STREETNAME_DIV = ['street-name-'+str(i) for i in [0, 1]]
 SELECTED_STREET_DIVS = OrderedDict([(orientation, 'selected-street' + orientation) for orientation in STREETS])
 TABLE_DIV_ID = 'div-table'
 TIMEPERIOD_DIV = 'timeperiod'
 STEP2 = 'step2'
+SUMMARY_STEP2 = 'summary-step2'
+BASELINE_DESC = 'baseline_desc'
 STREET_TITLE = 'street-title'
 TABLE_TITLE = 'table-title'
+SUMMARY_TABLE_TITLE = 'summary-table-title'
 TIME_TITLE = 'time-title'
+PRINT_TITLE = 'print-title'
+SUMMARY_PRINT_TITLE = 'summary-print-title'
+DATE_GENERATED = 'date-generated'
+SUMMARY_DATE_GENERATED = 'summary-date-generated'
 CONTROLS = dict(div_id='controls-div',
                 toggle='toggle-controls-button',
                 baseline_toggle='baseline-toggle',
+                summary_baseline_toggle='summary-baseline-toggle',
                 timeperiods='timeperiod-radio',
                 day_types='day-type-radio',
                 date_range_type='date-range-types',
+                summary_date_range_type='summary-date-range-type',
                 date_range='date-range-dropbown',
+                summary_date_range='summary-date-range',
                 date_range_span='date-range-span',
+                summary_date_range_span='summary-date-range-span',
                 date_picker='date-picker-div',
-                date_picker_span='date-picker-span')
+                date_picker_span='date-picker-span',
+                summary_date_picker='summary-date-picker-div',
+                summary_date_picker_span='summary-date-picker-span')
 DATERANGE_TYPES = ['Select Date', 'Select Week', 'Select Month']
 GRAPHS = ['eb_graph', 'wb_graph']
 GRAPHDIVS = ['eb_graph_div', 'wb_graph_div']
@@ -256,7 +320,7 @@ LOGGER = logging.getLogger(__name__)
 #                                                                                                 #
 ###################################################################################################
 
-def pivot_order(df, orientation = 'dvp', date_range_type=1):
+def pivot_order(df, orientation = 'gardiner', date_range_type=1):
     '''Pivot the dataframe around street directions and order by STREETS global var
     '''
     if DATERANGE_TYPES[date_range_type] == 'Select Date' and     'date' in df.columns:
@@ -271,6 +335,19 @@ def pivot_order(df, orientation = 'dvp', date_range_type=1):
     pivoted.street.cat.set_categories(STREETS[orientation], inplace=True)
     return pivoted.sort_values(['street']).round(1)
 
+
+def summary_pivot_order(df, date_range_type=1):
+    if DATERANGE_TYPES[date_range_type] == 'Select Date' and  'dt' in df.columns:
+        # Don't aggregate by date
+        pivoted = df.pivot_table(index=['street', 'dt'],
+                                 columns='direction',
+                                 values='tt').reset_index()
+    else:
+        # Do aggregate by date
+        pivoted = df.pivot_table(index='street', columns='direction', values='tt').reset_index()
+    pivoted.street = pivoted.street.astype("category")
+    return pivoted.sort_values(['street']).round(1)    
+
 def selected_data(data, daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     '''Returns a boolean column indicating whether the provided data was selected or not
     '''
@@ -282,7 +359,7 @@ def selected_data(data, daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
         date_filter = data['month_number'] == date_range_id
     return date_filter
 
-def filter_table_data(period, day_type, orientation='dvp', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
+def filter_table_data(period, day_type, orientation='gardiner', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
     '''Return data aggregated and filtered by period, day type, tab, date range
     '''
 
@@ -303,6 +380,31 @@ def filter_table_data(period, day_type, orientation='dvp', daterange_type=0, dat
     pivoted_baseline = pivot_order(filtered_base, orientation)
 
     return (pivoted, pivoted_baseline)
+
+def filter_summary_table_data(daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY):
+
+    date_filter = selected_data(DATA, daterange_type, date_range_id)
+
+    #current data
+    filtered = DATA[
+                    (DATA['day_type'] == day_type) &
+                    (DATA['category'] != 'Excluded') &
+                    (date_filter)]              
+    pivoted = pivot_order(filtered, daterange_type)
+        
+    #baseline data
+    filtered_base = BASELINE[(BASELINE['day_type'] == day_type)]
+    pivoted_baseline = pivot_order(filtered_base)
+    
+    return (pivoted, pivoted_baseline)
+
+def generate_summary_df(daterange_type, date_range_id, baseline_state):
+    if daterange_type == 'Select Date':
+        df = SUMMARY[(SUMMARY['dt'] == date_range_id)]
+        table =  dbc.Table.from_dataframe(df, striped=True, bordered=True, hover=True)
+    else:
+        table = dbc.Table.from_dataframe(df, striped=True, bordered=True, hover=True)
+    return table     
     
 def graph_bounds_for_date_range(daterange_type, date_range_id):
     '''Determine bounds for the x-axis of the graphs based on the type of 
@@ -343,7 +445,7 @@ def graph_bounds_for_date_range(daterange_type, date_range_id):
             
     else:
         raise ValueError('Wrong daterange_type provided: {}'.format(daterange_type))
-    LOGGER.debug('Filtering for %s. Date picked: %s, Start Range: %s, End Range: %s',
+    LOGGER.warning('Filtering for %s. Date picked: %s, Start Range: %s, End Range: %s',
                  DATERANGE_TYPES[daterange_type], date_picked, start_range, end_range)
     return [start_range, end_range]
 
@@ -448,7 +550,7 @@ def after_cell_class(before, after):
     else:
         return 'same'
 
-def generate_row(df_row, baseline_row, selected, orientation='dvp', baseline_state=1):
+def generate_row(df_row, baseline_row, selected, orientation='gardiner', baseline_state=1):
     """Create an HTML row from a database row (each street)
 
         :param df_row:
@@ -460,18 +562,22 @@ def generate_row(df_row, baseline_row, selected, orientation='dvp', baseline_sta
     """
 
     data_cells = []
+    if DATA[DATA['street'] == df_row['street']]['street1'].iloc[0] == 'summary to summary':
+        table_street = 'Total Travel Time'
+    else:
+        table_street = DATA[DATA['street'] == df_row['street']]['street1'].iloc[0]
 
-    for i in range(2):
+    for i in range(len(DIRECTIONS[orientation])):
         try:
             baseline_val = baseline_row[DIRECTIONS[orientation][i]]
         except KeyError:
-            baseline_val = nan 
+            baseline_val = nan
         try:
             after_val =  df_row[DIRECTIONS[orientation][i]]
         except (KeyError, TypeError):
             after_val = nan 
         data_cells.extend(generate_direction_cells(baseline_val, after_val, baseline_state))
-    table_street = DATA[DATA['street'] == df_row['street']]['street1'].iloc[0]
+    
     if baseline_state ==1:
         return html.Tr([html.Td(table_street, className='segname'), 
                     *data_cells],
@@ -481,9 +587,9 @@ def generate_row(df_row, baseline_row, selected, orientation='dvp', baseline_sta
         return html.Tr([html.Td(table_street, className='segname'), 
                     *data_cells],
                     id=df_row['street'],
-                    className=generate_row_class(selected))                
+                    className=generate_row_class(selected))     
 
-def generate_table(selected_street, day_type, period, orientation='dvp', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY, baseline_state=1):
+def generate_table(selected_street, day_type, period, orientation='gardiner', daterange_type=0, date_range_id=MOST_RECENT_WEEKDAY, baseline_state=1):
     """Generate HTML table of streets and before-after values
 
         :param selected_street:
@@ -516,13 +622,10 @@ def generate_table(selected_street, day_type, period, orientation='dvp', dateran
             day = filtered_data['date'].iloc[0].strftime('%a %b %d')
         except IndexError:
             day = date_range_id.strftime('%a %b %d')
-            LOGGER.warning(day + ' has no data')
     elif DATERANGE_TYPES[daterange_type] == 'Select Week':
         day = 'Week ' + str(date_range_id)
     elif DATERANGE_TYPES[daterange_type] == 'Select Month':
-        LOGGER.debug(date_range_id)
         date_picked = MONTHS[MONTHS['month_number'] == date_range_id]['month'].iloc[0]
-
         day = date_picked.strftime("%b '%y")
 
     rows = []
@@ -547,17 +650,28 @@ def generate_table(selected_street, day_type, period, orientation='dvp', dateran
                             orientation,
                             baseline_state)                                   
         rows.append(row) 
-
-    if baseline_state ==1:
-        return html.Table(
-                        [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=2), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=2)])] +
-                        [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title'), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title')])] +
-                        rows, id='data_table')
-    elif baseline_state ==2:
-        return html.Table(
-                        [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=1), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=1)])] +
-                        [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(day, className='date-title')])] +
-                        rows, id='data_table')                  
+    if len(DIRECTIONS[orientation]) == 1:
+        if baseline_state ==1:
+            return html.Table(
+                            [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=2)])] +
+                            [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title')])] +
+                            rows, id='data_table')
+        elif baseline_state ==2:
+            return html.Table(
+                            [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=1)])] +
+                            [html.Tr([html.Td(""), html.Td(day, className='date-title')])] +
+                            rows, id='data_table')    
+    else:                            
+        if baseline_state ==1:
+            return html.Table(
+                            [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=2), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=2)])] +
+                            [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title'), html.Td(day, className='date-title'), html.Td(" Baseline ", className='baseline_title')])] +
+                            rows, id='data_table')
+        elif baseline_state ==2:
+            return html.Table(
+                            [html.Tr([html.Td(""), html.Td(DIRECTIONS[orientation][0], className='direction-title', colSpan=1), html.Td(DIRECTIONS[orientation][1], className='direction-title', colSpan=1)])] +
+                            [html.Tr([html.Td(""), html.Td(day, className='date-title'), html.Td(day, className='date-title')])] +
+                            rows, id='data_table')                  
 
 def generate_graph_data(data, **kwargs):
     return dict(x=data['date'],
@@ -690,12 +804,12 @@ LEGEND = html.Div(children = [html.Div(className="box_baseline", style={'display
 STREETS_LAYOUT = html.Div(children=[
         html.Div(children=[
                     html.Button(id=CONTROLS['toggle'], children='Show Filters', style = {'margin-right':'5px'}),
-                    html.Button("Generate PDF", id='print-button')]
+                    html.Button("Print View", id='print-button', className='print-button')]
                 , className="hide-on-print", style={'margin-top':'5px'}),  
         html.Div(
             id=CONTROLS['div_id'],
                 children=[
-                    html.H3('Follow these steps to visualize and compare travel time impacts:',style={'fontSize':18, 'fontWeight':'bold'}, className="hide-on-print"),
+                    html.H3('Follow these steps to visualize and compare travel time:',style={'fontSize':18, 'fontWeight':'bold'}, className="hide-on-print"),
                     html.Div(
                         children=[
                                 html.H3('Step 1: Select the type of time period', style={'fontSize':16, 'marginTop': 10} ),
@@ -729,7 +843,7 @@ STREETS_LAYOUT = html.Div(children=[
                                         style={'display':'none'}),
                                 html.H3('Step 3: Select a time of day period', style={'fontSize':16, 'marginTop': 10} ),         
                                         ], className="hide-on-print"),
-                    html.Div(                                                    
+                    html.Div(                                                 
                             [dbc.RadioItems(id=CONTROLS['day_types'],
                                                 options=[{'label': day_type,
                                                             'value': day_type}
@@ -737,14 +851,13 @@ STREETS_LAYOUT = html.Div(children=[
                                                 value=TIMEPERIODS.iloc[0]['day_type'],
                                                 labelClassName="date-group-labels",
                                                 labelCheckedClassName="date-group-labels-checked",
-                                                className="date-group-items", inline=True),   
+                                                className="date-group-items hide-on-print", inline=True),   
                             dbc.RadioItems(id=CONTROLS['timeperiods'],
                                                 value=TIMEPERIODS.iloc[0]['period'],
                                                 labelClassName="date-group-labels",
                                             labelCheckedClassName="date-group-labels-checked",
                                             className="date-group-items hide-on-print", inline=True),   
-                                        ] , className="hide-on-print",
-                            ),
+                                        ] , className="hide-on-print"),
                     html.Div([html.H3('Step 4: Select to display the Baseline', style={'fontSize':16}),
                             dbc.RadioItems(id="baseline-toggle",
                                             value=1,
@@ -758,14 +871,70 @@ STREETS_LAYOUT = html.Div(children=[
                             html.H3('Step 5: Select streets in the table to display trends', style={'fontSize':16}, className="hide-on-print" ),                                                                             
                         ]
                         ),
-                    html.Div([    
+                    html.Div(children=[    
                             html.Div(id=TABLE_TITLE, className="table-title"),
-                            html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['dvp'], 'Weekday', 'AM Peak'), className="data-table"),
+                            html.Div(id=PRINT_TITLE, className="onlyprint-table"),
+                            html.Div(id=TABLE_DIV_ID, children=generate_table(INITIAL_STATE['gardiner'], 'Weekday', 'AM Peak'), className="data-table"),
                             html.Div(id='tt-long', children=[html.B('Travel Time', style={'background-color':'#E9A3C9'}),' 1+ min', html.B(' longer'), ' than baseline'], className="tt-long"),
                             html.Div(id='tt-short', children=[html.B('Travel Time', style={'background-color':'#A1D76A'}),' 1+ min', html.B(' shorter'), ' than baseline'], className="tt-short"), 
-                                             
+                            html.H3(id = 'baseline-description', 
+                                children='Baseline: Sep 1 - Oct 14, 2019, and Aug 1 - Sep 7, 2019 for routes affected by TTC Trackwork at Kingston/Woodbine and Queen',
+                                className="baseline-description"
+                                    )                               
                     ])
         ])                    
+
+SUMMARY_LAYOUT = html.Div(children=[
+                    html.Div(children=[html.Button("Print View", id='summary-print-button', className='print-button')],className="hide-on-print", style={'margin-top':'5px'}),
+                    html.Div(children=[
+                            html.H3('Follow these steps to visualize and compare travel time:',style={'fontSize':18, 'fontWeight':'bold'}, className="hide-on-print"),
+                            html.Div(
+                                children=[
+                                        html.H3('Step 1: Select the type of time period', style={'fontSize':16, 'marginTop': 10} ),
+                                        html.Div(dcc.Dropdown(
+                                                    id=CONTROLS['summary_date_range_type'],
+                                                    options=[{'label': label,
+                                                            'value': value}
+                                                            for value, label in enumerate(DATERANGE_TYPES)],
+                                                    value=0,
+                                                    clearable=False, 
+                                                    style={'width': '200px'}),
+                                                    title='Select a date range type to filter table data')], className="hide-on-print"),
+                                        html.H3(id=SUMMARY_STEP2, style={'fontSize':16, 'marginTop': 10}),             
+                                        html.Div(dcc.Dropdown(id=CONTROLS['summary_date_range'],
+                                                            options= generate_date_ranges(daterange_type=DATERANGE_TYPES.index('Select Week')),
+                                                            value = 1,
+                                                            clearable=False),
+                                                id=CONTROLS['summary_date_range_span'],
+                                                style={'display':'none'}
+                                                ),
+                                        html.Span(dcc.DatePickerSingle(id=CONTROLS['summary_date_picker'],
+                                                                    clearable=False,
+                                                                    min_date_allowed=DATERANGE[0],
+                                                                    max_date_allowed=DATERANGE[1],
+                                                                    date=MOST_RECENT_WEEKDAY,
+                                                                    display_format='MMM DD',
+                                                                    month_format='MMM',
+                                                                    show_outside_days=True),
+                                                id=CONTROLS['summary_date_picker_span'],
+                                                style={'display':'none'}
+                                                )], className="hide-on-print"),
+                            html.Div(
+                                children=[
+                                        html.H3('Step 3: Select to display the Baseline', style={'fontSize':16}),
+                                        dbc.RadioItems(id="summary-baseline-toggle",
+                                                        value=1,
+                                                        labelClassName="date-group-labels",
+                                                        labelCheckedClassName="date-group-labels-checked",
+                                                        className="date-group-items", inline=True, 
+                                                        options=[
+                                                                {"label": "Baseline", "value": 1},
+                                                                {"label": "No Baseline", "value": 2}])], className="hide-on-print"
+                                                                ),
+                         #html.Div(id=TABLE_DIV_ID, children=generate_summary_table(INITIAL_STATE['gardiner'], 'Weekday', 'AM Peak'), className="data-table"),                                                              
+                            ])
+                                                                                                                                                       
+
 
 app.layout = html.Div([
             dbc.Row(
@@ -776,26 +945,27 @@ app.layout = html.Div([
             dbc.Row(
                 dbc.Col([html.Div(
                         dcc.Tabs(children=[
-                                    dcc.Tab(label='DVP', value='dvp',className='custom-tab',selected_className='custom-tab--selected'),
+                                    #dcc.Tab(label='Summary', value='summary', children = [SUMMARY_LAYOUT]),
                                     dcc.Tab(label='Gardiner', value='gardiner',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='DVP', value='dvp',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Lakeshore', value='lakeshore',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Adelaide', value='adelaide',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Richmond', value='richmond',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Eastern', value='eastern',className='custom-tab',selected_className='custom-tab--selected'),
-                                    dcc.Tab(label='Front', value='front',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Queen', value='queen',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Richmond', value='richmond',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Adelaide', value='adelaide',className='custom-tab',selected_className='custom-tab--selected'),
                                     dcc.Tab(label='Wellington', value='wellington',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Front', value='front',className='custom-tab',selected_className='custom-tab--selected'),
+                                    dcc.Tab(label='Eastern', value='eastern',className='custom-tab',selected_className='custom-tab--selected'),
                                     ],
-                                    value='dvp',
+                                    value='gardiner',
                                     id='tabs',
                                     ),className="hide-on-print")], width=12)
                     ),
-            dbc.Container(
+            dbc.Container(id='container-style', children=
                 [dbc.Row([
                     dbc.Col((                    
                             html.Div(id=MAIN_DIV, children=[STREETS_LAYOUT])), width={"size":4, "order":1}, sm=12, xs=12, md=12, lg=4),
                     dbc.Col(html.Div(children=[
-                                                html.H2(id=STREET_TITLE, style={'fontSize':30, 'fontWeight':'bold', 'fontColor':'black'}),
+                                                html.H2(id=STREET_TITLE, className="street-title"),
                                                 html.H2(id=TIME_TITLE, className="graph-period-title"),                  
                                                 html.H2(id=STREETNAME_DIV[0],className="graph-title"),
                                                 html.Div(id = GRAPHDIVS[0], children=dcc.Graph(id=GRAPHS[0])),
@@ -804,20 +974,15 @@ app.layout = html.Div([
                                                 html.Div(children=[LEGEND]),
                                                  ]), width={"size":8, "order":2}, sm=12, xs=12, md=12, lg=8),
        
-                        ],className="reverse-stack"),
-                dbc.Row(
-                    [dbc.Col(
-                            html.H3(id = 'baseline-description', 
-                                children='Baseline: Aug 1 - Sep 7 2019 (routes affected by TTC Trackwork at Kingston/Woodbine and Queen), Sep 1 - Oct 14 2019 (all other routes)',
-                                className="baseline-description"
-                                    )
-                        , width={"size":4}, sm=12, xs=12, md=12, lg=4),
-                     dbc.Col(
-                            (html.Footer(children=html.H3(['Created by the ',
+                        ]),  
+                dbc.Row(        
+                     [dbc.Col(
+                            (html.Footer(children=[html.H2(id=DATE_GENERATED, className="onlyprint"), 
+                                                    html.H3(['Created by the ',
                                                   html.A('Big Data Innovation Team',
                                                          href="https://www.toronto.ca/services-payments/streets-parking-transportation/road-safety/big-data-innovation-team/")],
                                                          style={'text-align':'right',
-                                                                'padding-right':'1em'},className="hide-on-print"),
+                                                                'padding-right':'1em'},className="hide-on-print")],
                                ),
                        *[html.Div(id=div_id,
                                   style={'display': 'none'},
@@ -852,7 +1017,8 @@ def display_baseline(value):
     if value == 1:
         return {'display':'inline'}, {'display':'block'}, {'display':'block'}
     else:
-        return {'display':'none'}, {'display':'none'}, {'display':'none'}        
+        return {'display':'none'}, {'display':'none'}, {'display':'none'}                      
+
 
 @app.callback(Output(CONTROLS['div_id'], 'style'),
               [Input(CONTROLS['toggle'], 'n_clicks')],
@@ -891,27 +1057,67 @@ def generate_radio_options(selected_date, day_type='Weekday', daterange_type=0):
                 for period
                 in TIMEPERIODS[TIMEPERIODS['day_type'] == day_type]['period']]
 
+#callback function for summary tab
+
+@app.callback([Output(SUMMARY_STEP2, 'children'),
+              Output(SUMMARY_TABLE_TITLE, 'children'),
+              Output(SUMMARY_PRINT_TITLE, 'children'),
+              Output(SUMMARY_DATE_GENERATED, 'children')],
+             [Input(CONTROLS['summary_date_picker'], 'date'),
+              Input(CONTROLS['summary_date_range_type'], 'value'),
+              Input(CONTROLS['summary_date_range'], 'value'),
+             ])
+def summary_generate_step2(selected_date, daterange_type, date_range):
+    date_generated = 'Date generated: '+ str(pd.Timestamp.today().date())
+    time_range_title = ' things to fix'
+    if DATERANGE_TYPES[daterange_type] == 'Select Date': 
+        step2 =  'Step 2: Select the date'
+        table_title = 'Total Daily Travel Time (min)'
+        print_title = str(pd.to_datetime(selected_date).date()) + ', '+ str(time_range_title)
+    elif DATERANGE_TYPES[daterange_type] == 'Select Week':
+        week_start = WEEKS[(WEEKS['week_number'] == date_range)].iloc[0]['week']
+        week_end = week_start + pd.Timedelta('6 days')
+        step2 = 'Step 2: Select the week'
+        table_title = 'Total Weekly Travel Time (min)' 
+        print_title = str(week_start) + ' to ' + str(week_end) + ', '+ str(time_range_title)
+    elif DATERANGE_TYPES[daterange_type] == 'Select Month':
+        step2 = 'Step 2: Select the month'
+        table_title = 'Total Monthly Travel Time (min)'
+        print_title = str(MONTHS[(MONTHS['month_number'] == date_range)].iloc[0]['month'].strftime("%B %Y")) + ', '+ str(time_range_title)
+    return step2, table_title, print_title, date_generated
+
 
 @app.callback([Output(STEP2, 'children'),
-                Output(TABLE_TITLE, 'children')],
+               Output(TABLE_TITLE, 'children'),
+               Output(PRINT_TITLE, 'children'),
+               Output(DATE_GENERATED, 'children')],
               [Input(CONTROLS['date_picker'], 'date'),
                Input(CONTROLS['day_types'], 'value'),
                Input(CONTROLS['date_range_type'], 'value'),
+               Input(CONTROLS['timeperiods'], 'value'),
+               Input(CONTROLS['date_range'], 'value'),
                Input('tabs', 'value')]) 
-def generate_step_two(selected_date, day_type, daterange_type, tabs):
-    tabs_name = DATA[DATA['street'] == STREETS[tabs][0]]['street_short'].iloc[0]
-    
-    if DATERANGE_TYPES[daterange_type] == 'Select Date': 
-        step2 =  'Step 2: Select the date'
-        table_title = str(tabs_name) + ' - Average Daily Travel Time (mins)'
-    elif DATERANGE_TYPES[daterange_type] == 'Select Week':
-        step2 = 'Step 2: Select the week'
-        table_title = str(tabs_name) + ' - Average Weekly Travel Time (mins)' 
-    elif DATERANGE_TYPES[daterange_type] == 'Select Month':
-        step2 = 'Step 2: Select the month'
-        table_title = str(tabs_name) + ' - Average Monthly Travel Time (mins)'
-
-    return step2, table_title
+def generate_step_two(selected_date, day_type, daterange_type, timeperiod, date_range, tabs):
+    if tabs != 'summary':
+        tabs_name = DATA[DATA['street'] == STREETS[tabs][0]]['street_short'].iloc[0]
+        time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
+        time_range_title = day_type + ' ' + timeperiod + ' (' + time_range + ')'
+        date_generated = 'Date generated: '+ str(pd.Timestamp.today().date())
+        if DATERANGE_TYPES[daterange_type] == 'Select Date': 
+            step2 =  'Step 2: Select the date'
+            table_title = str(tabs_name) + ' - Average Daily Travel Time (min)'
+            print_title = str(pd.to_datetime(selected_date).date()) + ', '+ str(time_range_title)
+        elif DATERANGE_TYPES[daterange_type] == 'Select Week':
+            week_start = WEEKS[(WEEKS['week_number'] == date_range)].iloc[0]['week']
+            week_end = week_start + pd.Timedelta('6 days')
+            step2 = 'Step 2: Select the week'
+            table_title = str(tabs_name) + ' - Average Weekly Travel Time (min)' 
+            print_title = str(week_start) + ' to ' + str(week_end) + ', '+ str(time_range_title)
+        elif DATERANGE_TYPES[daterange_type] == 'Select Month':
+            step2 = 'Step 2: Select the month'
+            table_title = str(tabs_name) + ' - Average Monthly Travel Time (min)'
+            print_title = str(MONTHS[(MONTHS['month_number'] == date_range)].iloc[0]['month'].strftime("%B %Y")) + ', '+ str(time_range_title)
+        return step2, table_title, print_title, date_generated
 
 
 
@@ -957,7 +1163,7 @@ def update_day_type(date_picked, daterange_type, day_type):
                Input('tabs', 'value'),
                Input("baseline-toggle", 'value')],
               [State(div_id, 'children') for div_id in SELECTED_STREET_DIVS.values()])
-def update_table(period, day_type, daterange_type, date_range_id, date_picked=MOST_RECENT_WEEKDAY, orientation='dvp', baseline_state=1, *state_data):
+def update_table(period, day_type, daterange_type, date_range_id, date_picked=MOST_RECENT_WEEKDAY, orientation='gardiner', baseline_state=1, *state_data):
     '''Generate HTML table of before-after travel times based on selected
     day type, time period, and remember which row was previously selected
     '''
@@ -985,36 +1191,42 @@ def update_table(period, day_type, daterange_type, date_range_id, date_picked=MO
 
     return table
 
-@app.callback(Output(CONTROLS['date_range_span'], 'style'),
+@app.callback([Output(CONTROLS['date_range_span'], 'style'),
+               Output(CONTROLS['day_types'], 'style'),
+               Output(CONTROLS['date_picker_span'], 'style')],
               [Input(CONTROLS['date_range_type'], 'value')])
 def hide_reveal_date_range(daterange_type):
     if DATERANGE_TYPES[daterange_type] != 'Select Date':
-        return {'display':'inline'}
+        daterange = {'display':'inline'}
+        daterangetype = {'display':'inline'}
+        datepicker = {'display':'none'}
     else:
-        return {'display':'none'}
+        daterange = {'display':'none'}
+        daterangetype = {'display':'none'}
+        datepicker = {'display':'inline'}
+    return daterange, daterangetype, datepicker
 
-@app.callback(Output(CONTROLS['day_types'], 'style'),
-              [Input(CONTROLS['date_range_type'], 'value')])
-def hide_reveal_day_types(daterange_type):
+@app.callback([Output(CONTROLS['summary_date_range_span'], 'style'),
+               Output(CONTROLS['summary_date_picker_span'], 'style')],
+              [Input(CONTROLS['summary_date_range_type'], 'value')])
+def hide_summary_reveal_date_range(daterange_type):
     if DATERANGE_TYPES[daterange_type] != 'Select Date':
-        return {'display':'inline'}
+        daterange = {'display':'inline'}
+        datepicker = {'display':'none'}
     else:
-        return {'display':'none'}
-
-@app.callback(Output(CONTROLS['date_picker_span'], 'style'),
-              [Input(CONTROLS['date_range_type'], 'value')])
-def hide_reveal_date_picker(daterange_type):
-    LOGGER.debug('Hide reveal date picker, daterange_type: ' + str(daterange_type))
-    if DATERANGE_TYPES[daterange_type] == 'Select Date':
-        LOGGER.debug('Reveal date picker')
-        return {'display':'inline'}
-    else:
-        return {'display':'none'}
+        daterange = {'display':'none'}
+        datepicker = {'display':'inline'}
+    return daterange, datepicker
 
 @app.callback(Output(CONTROLS['date_range'], 'options'),
               [Input(CONTROLS['date_range_type'], 'value')])
 def generate_date_range_for_type(daterange_type):
     return generate_date_ranges(daterange_type=daterange_type)
+
+@app.callback(Output(CONTROLS['summary_date_range'], 'options'),
+              [Input(CONTROLS['summary_date_range_type'], 'value')])
+def generate_date_range_for_type(daterange_type):
+    return generate_date_ranges(daterange_type=daterange_type)    
 
 @app.callback(Output(CONTROLS['date_range'], 'value'),
               [Input(CONTROLS['date_range_type'], 'value')],
@@ -1028,6 +1240,19 @@ def update_date_range_value(daterange_type, date_range_id):
         return WEEKS['week_number'].iloc[0]    
     elif  DATERANGE_TYPES[daterange_type] == 'Select Month':
         return MONTHS['month_number'].iloc[0] 
+
+@app.callback(Output(CONTROLS['summary_date_range'], 'value'),
+              [Input(CONTROLS['summary_date_range_type'], 'value')],
+              [State(CONTROLS['summary_date_range'], 'value')])
+def update_date_range_value(daterange_type, date_range_id):
+    if DATERANGE_TYPES[daterange_type] == 'Select Date':
+        date_range_id        
+    #if not RANGES[daterange_type].empty and date_range_id <= len(RANGES[daterange_type]):
+    #    return date_range_id
+    elif  DATERANGE_TYPES[daterange_type] == 'Select Week':
+        return WEEKS['week_number'].iloc[0]    
+    elif  DATERANGE_TYPES[daterange_type] == 'Select Month':
+        return MONTHS['month_number'].iloc[0]         
 
 
 def create_row_update_function(streetname, orientation):
@@ -1089,8 +1314,12 @@ def create_update_street_name(dir_id):
         except IndexError:
             return html.Div(className = 'nodata')
         else:
-            return [html.B(DIRECTIONS[orientation][dir_id] + ': '),
-                    'from ' + from_to['from_intersection'] + ' to ' + from_to['to_intersection']]
+            if from_to['from_intersection'] == 'summary':
+                return [html.B(DIRECTIONS[orientation][dir_id] + ': '),
+                        'Total Travel Time']
+            else:     
+                return [html.B(DIRECTIONS[orientation][dir_id] + ': '),
+                        'from ' + from_to['from_intersection'] + ' to ' + from_to['to_intersection']]
 
 [create_update_street_name(i) for i in [0,1]]
 
@@ -1104,7 +1333,10 @@ def update_street_name(*args):
         #Use the input for the selected street from the orientation of the current tab
     *selected_streets, orientation, timeperiod, day_type = args
     street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
-    table_street = DATA[DATA['street'] == street]['street1'].iloc[0]
+    if DATA[DATA['street'] == street]['street1'].iloc[0] == 'summary to summary':
+        table_street = 'Total Travel Time'
+    else:
+        table_street = DATA[DATA['street'] == street]['street1'].iloc[0]
     main_street = DATA[DATA['street'] == STREETS[orientation][0]]['street_short'].iloc[0]
     main_name = main_street + ': '+ table_street
     time_range = TIMEPERIODS[(TIMEPERIODS['period'] == timeperiod) & (TIMEPERIODS['day_type'] == day_type)].iloc[0]['period_range']
@@ -1131,26 +1363,29 @@ def create_update_graph_div(graph_number):
         '''
         *selected_streets, daterange_type, date_range, baseline_state, date_picked = args
         #Use the input for the selected street from the orientation of the current tab
-        if DATERANGE_TYPES[daterange_type] == 'Select Date':
-            date_range = pd.to_datetime(date_picked).normalize()
-        
-        street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
-        LOGGER.debug('Updating graph %s, for street: %s, period: %s, day_type: %s, daterange_type: %s, date_range: %s',
-                     GRAPHS[graph_number], street, period, day_type, daterange_type, date_range)
-        figure = generate_figure(street,
-                                 DIRECTIONS[orientation][graph_number],
-                                 period=period,
-                                 day_type=day_type,
-                                 daterange_type=daterange_type,
-                                 date_range_id=date_range,
-                                 baseline_state=baseline_state)
-                                
-        if figure: 
-            return html.Div(dcc.Graph(id = GRAPHS[graph_number],
-                                      figure = figure,
-                                      config={'displayModeBar': False}
-                                                                        ))
-        else:
+        try:
+            if DATERANGE_TYPES[daterange_type] == 'Select Date':
+                date_range = pd.to_datetime(date_picked).normalize()
+            
+            street = selected_streets[list(SELECTED_STREET_DIVS.keys()).index(orientation)]
+            LOGGER.debug('Updating graph %s, for street: %s, period: %s, day_type: %s, daterange_type: %s, date_range: %s',
+                        GRAPHS[graph_number], street, period, day_type, daterange_type, date_range)
+            figure = generate_figure(street,
+                                    DIRECTIONS[orientation][graph_number],
+                                    period=period,
+                                    day_type=day_type,
+                                    daterange_type=daterange_type,
+                                    date_range_id=date_range,
+                                    baseline_state=baseline_state)
+                                    
+            if figure: 
+                return html.Div(dcc.Graph(id = GRAPHS[graph_number],
+                                        figure = figure,
+                                        config={'displayModeBar': False}
+                                                                            ))
+            else:
+                return html.Div(className = 'nodata')
+        except IndexError:
             return html.Div(className = 'nodata')
 
     update_graph.__name__ = 'update_graph_' + GRAPHS[graph_number]
